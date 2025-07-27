@@ -1,0 +1,115 @@
+version: '3.8'
+
+# =======================================================
+# Docker Compose - Release 0.1.0: URL Shortener Platform
+# =======================================================
+
+services:
+  # ===========================================
+  # DATABASE & CACHE
+  # ===========================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: urlshortener-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - '${HOST_POSTGRES_PORT}:${POSTGRES_PORT}'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - urlshortener-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: urlshortener-redis
+    ports:
+      - '${HOST_REDIS_PORT}:${REDIS_PORT}'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - urlshortener-network
+
+  # ===========================================
+  # CORE MICROSERVICE (Release 0.1.0)
+  # ===========================================
+  url-shortener-service:
+    build:
+      context: .
+      dockerfile: apps/url-shortener-service/Dockerfile
+    container_name: urlshortener-service
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - PORT=${PORT}
+      - BASE_URL=${BASE_URL}
+      - REDIRECT_BASE_URL=${REDIRECT_BASE_URL}
+      # Observability
+      - ENABLE_SENTRY=${ENABLE_SENTRY}
+      - ENABLE_METRICS=${ENABLE_METRICS}
+      - LOG_LEVEL=${LOG_LEVEL}
+    ports:
+      - '${HOST_SERVICE_PORT}:${PORT}'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:${PORT}/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - urlshortener-network
+
+  # ===========================================
+  # API GATEWAY
+  # ===========================================
+  krakend:
+    image: devopsfaith/krakend:2.5
+    container_name: urlshortener-gateway
+    ports:
+      - '${HOST_GATEWAY_PORT}:${KRAKEND_PORT}'
+    volumes:
+      - ./gateway/krakend.json:/etc/krakend/krakend.json:ro
+    environment:
+      - FC_ENABLE=1
+      - FC_SETTINGS=/etc/krakend
+      - FC_PARTIALS=/etc/krakend/partials
+    depends_on:
+      - url-shortener-service
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:${KRAKEND_PORT}/__health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - urlshortener-network
+
+# ===========================================
+# VOLUMES & NETWORKS
+# ===========================================
+volumes:
+  postgres_data:
+    name: ${POSTGRES_VOLUME_NAME}
+  redis_data:
+    name: ${REDIS_VOLUME_NAME}
+
+networks:
+  urlshortener-network:
+    name: ${NETWORK_NAME}
+    driver: bridge

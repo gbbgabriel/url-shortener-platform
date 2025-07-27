@@ -1,0 +1,49 @@
+// =======================================================
+// Prisma Schema - Release 0.1.0: Basic URL Shortener
+// =======================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================================
+// CORE TABLES - Release 0.1.0
+// ===========================================
+
+model ShortUrl {
+  id          String    @id @default(uuid())
+  shortCode   String    @unique @map("short_code") @db.VarChar(6)
+  originalUrl String    @map("original_url") @db.Text
+  clickCount  Int       @default(0) @map("click_count")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  // Relationship with clicks
+  clicks UrlClick[]
+
+  @@index([shortCode])
+  @@index([createdAt])
+  @@map("short_urls")
+}
+
+model UrlClick {
+  id         String   @id @default(uuid())
+  shortUrlId String   @map("short_url_id")
+  ipAddress  String?  @map("ip_address") @db.VarChar(45)
+  userAgent  String?  @map("user_agent") @db.Text
+  referer    String?  @db.Text
+  clickedAt  DateTime @default(now()) @map("clicked_at")
+
+  // Relationship
+  shortUrl ShortUrl @relation(fields: [shortUrlId], references: [id], onDelete: Cascade)
+
+  @@index([shortUrlId])
+  @@index([clickedAt])
+  @@map("url_clicks")
+}
