@@ -134,17 +134,26 @@ build/
 dist/
 build/
 
+# NestJS CLI generated files
+.nest-cli.cache
+
 # ==================== DATABASE ====================
 # Prisma
 # Keep prisma folder but ignore generated files
 prisma/generated/
 prisma/*.db
 prisma/*.db-journal
+prisma/dev.db*
+prisma/migrations/**/*.sql.bak
 
 # Database files
 *.sqlite
 *.sqlite3
 *.db
+
+# Database dumps
+*.dump
+*.sql.bak
 
 # ==================== ENVIRONMENT ====================
 # Environment variables
@@ -166,11 +175,17 @@ volumes/
 docker-compose.override.yml
 docker-compose.override.yaml
 
+# Docker build context
+.dockerignore.bak
+
 # ==================== LOGS ====================
 # Application logs
 logs/
 *.log
 log/
+
+# Docker logs
+docker-logs/
 
 # ==================== CACHE ====================
 # Cache directories
@@ -186,6 +201,18 @@ coverage/
 
 # Jest
 junit.xml
+coverage.xml
+test-results.xml
+**/coverage/
+**/.nyc_output/
+
+# Jest cache
+.jest-cache/
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
 
 # ==================== IDE & EDITORS ====================
 # VSCode
@@ -289,6 +316,9 @@ elastic-apm/
 # Logs específicos
 sentry-debug-meta.properties
 
+# Prometheus
+prometheus-data/
+
 # ==================== OTHERS ====================
 # Backup files
 *.bak
@@ -334,3 +364,38 @@ kubernetes/secrets/
 # Local development
 .local/
 local/
+
+# Turbo (monorepo build system)
+.turbo/
+
+# Rush (monorepo build system)
+common/temp/
+
+# Nx (monorepo build system)
+.nx/
+
+# ==================== API GATEWAY ====================
+# KrakenD
+krakend.log
+
+# ==================== MICROSERVICES ====================
+# Service-specific builds
+**/dist/
+**/build/
+
+# Service logs
+**/logs/
+
+# ==================== DEV TOOLS ====================
+# Temporary development files
+scratch/
+temp-*
+*.draft
+*.wip
+
+# Local scripts
+scripts/local/
+
+# Development databases
+*.dev.db
+*.test.db
