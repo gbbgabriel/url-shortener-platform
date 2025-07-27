@@ -6,6 +6,8 @@
 # Ignorar arquivos de instrução do teste técnico
 instructions.md
 teste_tecnico_backend_senior.md
+instruction.md
+requisitos_backend_senior.md
 
 # ==================== NODE.JS ====================
 # Logs
