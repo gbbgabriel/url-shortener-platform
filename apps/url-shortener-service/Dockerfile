@@ -1,5 +1,5 @@
 # =======================================================
-# URL Shortener Service - Dockerfile (Release 0.1.0)
+# URL Shortener Service - Dockerfile (Release 0.3.0)
 # =======================================================
 
 # Build stage
@@ -13,7 +13,7 @@ COPY nest-cli.json ./
 COPY tsconfig*.json ./
 
 # Install ALL dependencies (including devDependencies for build)
-RUN npm ci && npm cache clean --force
+RUN npm install && npm cache clean --force
 
 # Copy source code
 COPY apps/url-shortener-service ./apps/url-shortener-service
@@ -41,8 +41,8 @@ RUN addgroup -g 1001 -S nodejs && \
 # Copy package files for production install
 COPY package*.json ./
 
-# Install ONLY production dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install ALL dependencies
+RUN npm install && npm cache clean --force
 
 # Copy prisma schema for client generation
 COPY prisma ./prisma

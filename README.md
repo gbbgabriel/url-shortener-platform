@@ -1,6 +1,6 @@
 # 🔗 URL Shortener Platform
 
-**Release 0.2.0** - Plataforma completa de encurtamento de URLs com Identity Service, autenticação JWT e arquitetura de microserviços.
+**Release 0.3.0** - Plataforma completa de encurtamento de URLs com gerenciamento personalizado de URLs por usuário, Identity Service, autenticação JWT e arquitetura de microserviços.
 
 ## 🚀 Setup do Zero
 
@@ -98,12 +98,12 @@ docker-compose -f docker-compose.test.yml down
 
 ### 📊 Resumo dos Testes
 
-| Tipo            | Quantidade     | Descrição                                   |
-| --------------- | -------------- | ------------------------------------------- |
-| **Unit**        | 74 testes      | Services, controllers, hash, validação      |
-| **E2E**         | 34 testes      | APIs completas via HTTP (ambos os serviços) |
-| **Integration** | 25 testes      | Banco de dados + serviços + autenticação    |
-| **Total**       | **133 testes** | **100% dos cenários críticos cobertos**     |
+| Tipo            | Quantidade     | Descrição                                                   |
+| --------------- | -------------- | ----------------------------------------------------------- |
+| **Unit**        | 78 testes      | Services, controllers, hash, validação, user URL management |
+| **E2E**         | 34 testes      | APIs completas via HTTP (ambos os serviços)                 |
+| **Integration** | 25 testes      | Banco de dados + serviços + autenticação                    |
+| **Total**       | **137 testes** | **100% dos cenários críticos cobertos**                     |
 
 ### 🔍 Testes Manuais Críticos
 
@@ -134,7 +134,20 @@ curl -I http://localhost:3002/SHORTCODE
 # 6. Verificar informações e click tracking
 curl http://localhost:8080/info/SHORTCODE
 
-# 7. Verificar documentação unificada
+# 7. Listar URLs do usuário (com token)
+curl -H "Authorization: Bearer TOKEN" http://localhost:8080/my-urls
+
+# 8. Editar URL do usuário (com token)
+curl -X PUT http://localhost:8080/my-urls/URL_ID \
+  -H "Authorization: Bearer TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"originalUrl":"https://nova-url.com"}'
+
+# 9. Deletar URL do usuário (com token)
+curl -X DELETE http://localhost:8080/my-urls/URL_ID \
+  -H "Authorization: Bearer TOKEN"
+
+# 10. Verificar documentação unificada
 open http://localhost:8080/docs
 ```
 
@@ -192,7 +205,7 @@ Antes de considerar a aplicação pronta:
 - [ ] URLs são criadas via `POST /shorten` com sucesso
 - [ ] Redirects funcionam via `GET http://localhost:3002/CODE`
 - [ ] Click tracking incrementa em `GET /info/CODE`
-- [ ] **133/133 testes** passando (74 unit + 34 e2e + 25 integration)
+- [ ] **137/137 testes** passando (78 unit + 34 e2e + 25 integration)
 - [ ] Documentation hub disponível em `http://localhost:8080/docs`
 - [ ] Swagger individual: Identity (`http://localhost:3001/api/docs`) e URL Shortener (`http://localhost:3002/api/docs`)
 - [ ] URLs inexistentes retornam **404**
@@ -241,6 +254,9 @@ flowchart TD
         API2[GET /info/:code]
         API3[GET /health]
         API4[GET /:code → 301 Redirect]
+        API5[GET /my-urls → User URLs]
+        API6[PUT /my-urls/:id → Update URL]
+        API7[DELETE /my-urls/:id → Delete URL]
         DOCS1[GET /docs → Hub]
     end
 ```
@@ -312,15 +328,15 @@ Cliente → KrakenD :8080 → Nginx Docs Server → HTML Hub
 
 ### 🎯 Portas e Serviços
 
-| Serviço              | Porta | Propósito          | Acesso            | Status    |
-| -------------------- | ----- | ------------------ | ----------------- | --------- |
-| **KrakenD Gateway**  | 8080  | API Management     | Público           | ✅ v0.2.0 |
-| **Identity Service** | 3001  | JWT Authentication | Interno           | ✅ v0.2.0 |
-| **URL Shortener**    | 3002  | Core Logic         | Interno/Redirects | ✅ v0.1.0 |
-| **Docs Hub Server**  | 80    | Documentation Hub  | Via Gateway       | ✅ v0.2.0 |
-| **PostgreSQL**       | 5432  | Database           | Interno           | ✅ v0.1.0 |
-| **Redis**            | 6379  | Cache Layer        | Interno           | ✅ v0.1.0 |
-| **Test Database**    | 5433  | Testing Only       | CI/CD             | ✅ v0.1.0 |
+| Serviço              | Porta | Propósito              | Acesso            | Status    |
+| -------------------- | ----- | ---------------------- | ----------------- | --------- |
+| **KrakenD Gateway**  | 8080  | API Management         | Público           | ✅ v0.2.0 |
+| **Identity Service** | 3001  | JWT Authentication     | Interno           | ✅ v0.2.0 |
+| **URL Shortener**    | 3002  | Core Logic + User URLs | Interno/Redirects | ✅ v0.3.0 |
+| **Docs Hub Server**  | 80    | Documentation Hub      | Via Gateway       | ✅ v0.2.0 |
+| **PostgreSQL**       | 5432  | Database               | Interno           | ✅ v0.1.0 |
+| **Redis**            | 6379  | Cache Layer            | Interno           | ✅ v0.1.0 |
+| **Test Database**    | 5433  | Testing Only           | CI/CD             | ✅ v0.1.0 |
 
 ## 🚀 Tecnologias
 
@@ -531,6 +547,8 @@ REDIRECT_URL=http://localhost:3002/{shortCode}
 
 ### 🔐 Authentication (via Gateway - porta 8080)
 
+Todos os endpoints de autenticação e gerenciamento de URLs devem usar o gateway na porta 8080 para aproveitar rate limiting, CORS e validação JWT.
+
 #### Registrar Usuário
 
 ```http
@@ -581,6 +599,8 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 
 ### 🌐 URL Shortener (via Gateway - porta 8080)
 
+#### 📝 URLs Públicas (sem autenticação)
+
 #### Health Check
 
 ```http
@@ -624,6 +644,58 @@ GET http://localhost:8080/info/{shortCode}
   "clickCount": 10,
   "createdAt": "2025-01-27T10:00:00.000Z",
   "updatedAt": "2025-01-27T10:00:00.000Z"
+}
+```
+
+#### 🔐 URLs Pessoais (autenticação obrigatória)
+
+##### Listar Minhas URLs
+
+```http
+GET http://localhost:8080/my-urls
+Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+```
+
+**Resposta:**
+
+```json
+[
+  {
+    "id": "uuid-url-1",
+    "shortCode": "aZbKq7",
+    "shortUrl": "http://localhost:3002/aZbKq7",
+    "originalUrl": "https://example.com/url1",
+    "clickCount": 5,
+    "createdAt": "2025-07-28T10:00:00.000Z",
+    "updatedAt": "2025-07-28T10:00:00.000Z"
+  }
+]
+```
+
+##### Editar Minha URL
+
+```http
+PUT http://localhost:8080/my-urls/{id}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+Content-Type: application/json
+
+{
+  "originalUrl": "https://nova-url-editada.com"
+}
+```
+
+##### Deletar Minha URL
+
+```http
+DELETE http://localhost:8080/my-urls/{id}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+```
+
+**Resposta:**
+
+```json
+{
+  "message": "URL deleted successfully"
 }
 ```
 
@@ -757,37 +829,35 @@ NODE_ENV=production npm run start:prod
 
 ## 🗺️ Roadmap
 
-### 🎯 Release Atual - v0.2.0 ✅
+### 🎯 Release Atual - v0.3.0 ✅
 
-- ✅ **Identity Service**: Microserviço de autenticação completo
-- ✅ **JWT Authentication**: Login, registro, proteção de rotas
-- ✅ **User Management**: Gerenciamento completo de usuários
-- ✅ **API Gateway**: KrakenD com rate limiting e validação JWT
-- ✅ **Documentation Hub**: Sistema híbrido com Nginx
-- ✅ **Database Schema**: Relacionamento User-ShortUrl implementado
-- ✅ **Testing Suite**: 133 testes passando (74+34+25)
-- ✅ **Docker Architecture**: Ambiente completo com 7 serviços
+- ✅ **User URL Management**: CRUD completo de URLs por usuário
+- ✅ **Personal Dashboard**: `GET /my-urls` para listar URLs do usuário
+- ✅ **URL Editing**: `PUT /my-urls/{id}` para editar URLs existentes
+- ✅ **Soft Delete**: `DELETE /my-urls/{id}` com deleção lógica
+- ✅ **Ownership Security**: Validação de propriedade de URLs
+- ✅ **JWT Gateway Integration**: Autenticação funcionando via gateway
+- ✅ **Enhanced Testing**: 137 testes passando (78+34+25)
+- ✅ **Documentation Updated**: Hub atualizado com novas rotas
 
 ### 🔄 Próximas Releases
 
-#### **v0.3.0 - URLs por Usuário** 📋
-
-- 🔗 **CRUD de URLs para usuários autenticados**
-  - `GET /my-urls` - Listar URLs do usuário
-  - `PUT /my-urls/:id` - Editar URL existente
-  - `DELETE /my-urls/:id` - Deletar URL do usuário
-- 📊 **Dashboard pessoal de URLs**
-- 🗂️ **Organização por usuário**
-- ⚙️ **Configurações avançadas de URL**
-- 🔒 **URLs privadas vs públicas**
-
 #### **v0.4.0 - Analytics Avançado** 📊
 
-- 📈 **Métricas detalhadas de cliques**
-- 🌍 **Geolocalização de acessos**
-- 📱 **Detecção de dispositivos**
-- 📊 **Dashboards visuais**
+- 📈 **Métricas detalhadas por usuário**
+- 🌍 **Geolocalização de cliques**
+- 📱 **Análise de dispositivos**
+- 📊 **Dashboard visual de estatísticas**
 - 📅 **Relatórios temporais**
+- 🎯 **Conversion tracking**
+
+#### **v0.5.0 - Observabilidade** 🔍
+
+- 🔍 **Logging estruturado com Winston**
+- 📊 **Métricas Prometheus + Grafana**
+- 🚨 **Alertas e monitoramento**
+- 🐛 **Distributed tracing com Jaeger**
+- 🏥 **Health checks avançados**
 
 #### **v0.5.0 - Observabilidade** 🔍
 

@@ -4,8 +4,10 @@ import { FastifyReply } from 'fastify';
 import { UrlShortenerServiceController } from './url-shortener-service.controller';
 import { UrlShortenerServiceService } from '../services/url-shortener-service.service';
 import { CreateShortUrlDto } from '../dto/create-short-url.dto';
+import { UpdateUrlDto } from '../dto/update-url.dto';
 import { ShortUrlResponseDto } from '../dto/short-url-response.dto';
 import { UrlInfoResponseDto } from '../dto/url-info-response.dto';
+import { UserUrlResponseDto } from '../dto/user-url-response.dto';
 
 describe('UrlShortenerServiceController', () => {
   let controller: UrlShortenerServiceController;
@@ -14,6 +16,9 @@ describe('UrlShortenerServiceController', () => {
     shortenUrl: jest.fn(),
     getUrlInfo: jest.fn(),
     redirect: jest.fn(),
+    getUserUrls: jest.fn(),
+    updateUserUrl: jest.fn(),
+    deleteUserUrl: jest.fn(),
   };
 
   const mockShortUrlResponse: ShortUrlResponseDto = {
@@ -29,6 +34,21 @@ describe('UrlShortenerServiceController', () => {
     shortUrl: 'http://localhost:3002/abc123',
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01'),
+  };
+
+  const mockUserUrlResponse: UserUrlResponseDto = {
+    id: 'user-url-id-123',
+    shortCode: 'abc123',
+    originalUrl: 'https://example.com',
+    shortUrl: 'http://localhost:3002/abc123',
+    clickCount: 5,
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+  };
+
+  const mockUser = {
+    userId: 'user-id-123',
+    email: 'test@example.com',
   };
 
   const mockFastifyReply: Partial<FastifyReply> = {
@@ -67,7 +87,7 @@ describe('UrlShortenerServiceController', () => {
 
       expect(result.status).toBe('OK');
       expect(result.service).toBe('url-shortener-service');
-      expect(result.version).toBe('0.1.0');
+      expect(result.version).toBe('0.3.0');
       expect(typeof result.timestamp).toBe('string');
       expect(result.timestamp).toMatch(
         /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/,
@@ -90,16 +110,32 @@ describe('UrlShortenerServiceController', () => {
       originalUrl: 'https://example.com/very/long/url',
     };
 
-    it('should create short URL successfully', async () => {
+    it('should create short URL successfully without user', async () => {
       mockUrlShortenerService.shortenUrl.mockResolvedValue(
         mockShortUrlResponse,
       );
 
-      const result = await controller.shortenUrl(createShortUrlDto);
+      const result = await controller.shortenUrl(createShortUrlDto, null);
 
       expect(result).toEqual(mockShortUrlResponse);
       expect(mockUrlShortenerService.shortenUrl).toHaveBeenCalledWith(
         createShortUrlDto.originalUrl,
+        undefined,
+      );
+      expect(mockUrlShortenerService.shortenUrl).toHaveBeenCalledTimes(1);
+    });
+
+    it('should create short URL successfully with authenticated user', async () => {
+      mockUrlShortenerService.shortenUrl.mockResolvedValue(
+        mockShortUrlResponse,
+      );
+
+      const result = await controller.shortenUrl(createShortUrlDto, mockUser);
+
+      expect(result).toEqual(mockShortUrlResponse);
+      expect(mockUrlShortenerService.shortenUrl).toHaveBeenCalledWith(
+        createShortUrlDto.originalUrl,
+        mockUser.userId,
       );
       expect(mockUrlShortenerService.shortenUrl).toHaveBeenCalledTimes(1);
     });
@@ -113,11 +149,12 @@ describe('UrlShortenerServiceController', () => {
         new BadRequestException('Invalid URL'),
       );
 
-      await expect(controller.shortenUrl(invalidDto)).rejects.toThrow(
+      await expect(controller.shortenUrl(invalidDto, null)).rejects.toThrow(
         BadRequestException,
       );
       expect(mockUrlShortenerService.shortenUrl).toHaveBeenCalledWith(
         invalidDto.originalUrl,
+        undefined,
       );
     });
 
@@ -125,9 +162,9 @@ describe('UrlShortenerServiceController', () => {
       const error = new Error('Database connection failed');
       mockUrlShortenerService.shortenUrl.mockRejectedValue(error);
 
-      await expect(controller.shortenUrl(createShortUrlDto)).rejects.toThrow(
-        error,
-      );
+      await expect(
+        controller.shortenUrl(createShortUrlDto, null),
+      ).rejects.toThrow(error);
     });
   });
 
@@ -268,6 +305,172 @@ describe('UrlShortenerServiceController', () => {
         controller.redirect(shortCode, mockFastifyReply as FastifyReply),
       ).rejects.toThrow(error);
       expect(mockFastifyReply.code).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getUserUrls', () => {
+    it('should return user URLs successfully', async () => {
+      const mockUserUrls = [mockUserUrlResponse];
+      mockUrlShortenerService.getUserUrls.mockResolvedValue(mockUserUrls);
+
+      const result = await controller.getUserUrls(mockUser);
+
+      expect(result).toEqual(mockUserUrls);
+      expect(mockUrlShortenerService.getUserUrls).toHaveBeenCalledWith(
+        mockUser.userId,
+      );
+      expect(mockUrlShortenerService.getUserUrls).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return empty array when user has no URLs', async () => {
+      mockUrlShortenerService.getUserUrls.mockResolvedValue([]);
+
+      const result = await controller.getUserUrls(mockUser);
+
+      expect(result).toEqual([]);
+      expect(mockUrlShortenerService.getUserUrls).toHaveBeenCalledWith(
+        mockUser.userId,
+      );
+    });
+
+    it('should handle service errors', async () => {
+      const error = new Error('Database connection failed');
+      mockUrlShortenerService.getUserUrls.mockRejectedValue(error);
+
+      await expect(controller.getUserUrls(mockUser)).rejects.toThrow(error);
+      expect(mockUrlShortenerService.getUserUrls).toHaveBeenCalledWith(
+        mockUser.userId,
+      );
+    });
+  });
+
+  describe('updateUserUrl', () => {
+    const urlId = 'user-url-id-123';
+    const updateUrlDto: UpdateUrlDto = {
+      originalUrl: 'https://updated-example.com',
+    };
+
+    it('should update user URL successfully', async () => {
+      const updatedResponse = {
+        ...mockUserUrlResponse,
+        originalUrl: updateUrlDto.originalUrl,
+        updatedAt: new Date('2024-01-02'),
+      };
+
+      mockUrlShortenerService.updateUserUrl.mockResolvedValue(updatedResponse);
+
+      const result = await controller.updateUserUrl(
+        urlId,
+        updateUrlDto,
+        mockUser,
+      );
+
+      expect(result).toEqual(updatedResponse);
+      expect(mockUrlShortenerService.updateUserUrl).toHaveBeenCalledWith(
+        mockUser.userId,
+        urlId,
+        updateUrlDto.originalUrl,
+      );
+      expect(mockUrlShortenerService.updateUserUrl).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw NotFoundException for non-existent URL', async () => {
+      mockUrlShortenerService.updateUserUrl.mockRejectedValue(
+        new NotFoundException('URL not found or does not belong to user'),
+      );
+
+      await expect(
+        controller.updateUserUrl(urlId, updateUrlDto, mockUser),
+      ).rejects.toThrow(NotFoundException);
+      expect(mockUrlShortenerService.updateUserUrl).toHaveBeenCalledWith(
+        mockUser.userId,
+        urlId,
+        updateUrlDto.originalUrl,
+      );
+    });
+
+    it('should handle different users correctly', async () => {
+      const differentUser = {
+        userId: 'different-user-id',
+        email: 'different@example.com',
+      };
+
+      mockUrlShortenerService.updateUserUrl.mockRejectedValue(
+        new NotFoundException('URL not found or does not belong to user'),
+      );
+
+      await expect(
+        controller.updateUserUrl(urlId, updateUrlDto, differentUser),
+      ).rejects.toThrow(NotFoundException);
+      expect(mockUrlShortenerService.updateUserUrl).toHaveBeenCalledWith(
+        differentUser.userId,
+        urlId,
+        updateUrlDto.originalUrl,
+      );
+    });
+  });
+
+  describe('deleteUserUrl', () => {
+    const urlId = 'user-url-id-123';
+
+    it('should delete user URL successfully', async () => {
+      const deleteResponse = { message: 'URL deleted successfully' };
+      mockUrlShortenerService.deleteUserUrl.mockResolvedValue(deleteResponse);
+
+      const result = await controller.deleteUserUrl(urlId, mockUser);
+
+      expect(result).toEqual(deleteResponse);
+      expect(mockUrlShortenerService.deleteUserUrl).toHaveBeenCalledWith(
+        mockUser.userId,
+        urlId,
+      );
+      expect(mockUrlShortenerService.deleteUserUrl).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw NotFoundException for non-existent URL', async () => {
+      mockUrlShortenerService.deleteUserUrl.mockRejectedValue(
+        new NotFoundException('URL not found or does not belong to user'),
+      );
+
+      await expect(controller.deleteUserUrl(urlId, mockUser)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(mockUrlShortenerService.deleteUserUrl).toHaveBeenCalledWith(
+        mockUser.userId,
+        urlId,
+      );
+    });
+
+    it('should handle different users correctly', async () => {
+      const differentUser = {
+        userId: 'different-user-id',
+        email: 'different@example.com',
+      };
+
+      mockUrlShortenerService.deleteUserUrl.mockRejectedValue(
+        new NotFoundException('URL not found or does not belong to user'),
+      );
+
+      await expect(
+        controller.deleteUserUrl(urlId, differentUser),
+      ).rejects.toThrow(NotFoundException);
+      expect(mockUrlShortenerService.deleteUserUrl).toHaveBeenCalledWith(
+        differentUser.userId,
+        urlId,
+      );
+    });
+
+    it('should handle service errors', async () => {
+      const error = new Error('Database connection failed');
+      mockUrlShortenerService.deleteUserUrl.mockRejectedValue(error);
+
+      await expect(controller.deleteUserUrl(urlId, mockUser)).rejects.toThrow(
+        error,
+      );
+      expect(mockUrlShortenerService.deleteUserUrl).toHaveBeenCalledWith(
+        mockUser.userId,
+        urlId,
+      );
     });
   });
 });

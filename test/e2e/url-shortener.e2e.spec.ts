@@ -52,7 +52,7 @@ describe('URL Shortener API - End-to-End Tests', () => {
       expect(data).toMatchObject({
         status: 'OK',
         service: 'url-shortener-service',
-        version: '0.1.0',
+        version: '0.3.0',
       });
       expect(data.timestamp).toBeDefined();
     });

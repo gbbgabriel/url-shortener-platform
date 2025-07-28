@@ -15,7 +15,7 @@ export class HealthResponseDto {
 
   @ApiProperty({
     description: 'Versão atual',
-    example: '0.1.0',
+    example: '0.3.0',
   })
   version!: string;
 

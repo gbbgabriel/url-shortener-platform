@@ -13,7 +13,7 @@ COPY nest-cli.json ./
 COPY tsconfig*.json ./
 
 # Install dependencies
-RUN npm ci && npm cache clean --force
+RUN npm install && npm cache clean --force
 
 # Copy source code
 COPY apps/identity-service ./apps/identity-service
@@ -41,8 +41,8 @@ RUN addgroup -g 1001 -S nodejs && \
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install ALL dependencies
+RUN npm install && npm cache clean --force
 
 # Copy Prisma schema
 COPY prisma ./prisma

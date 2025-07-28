@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.krakend.io/schema/v3.json",
   "version": 3,
-  "name": "URL Shortener Gateway - Release 0.2.0",
+  "name": "URL Shortener Gateway - Release 0.3.0",
   "port": 8080,
   "host": ["0.0.0.0"],
   "timeout": "30s",
@@ -64,20 +64,16 @@
       "endpoint": "/auth/me",
       "method": "GET",
       "timeout": "5s",
+      "output_encoding": "no-op",
       "backend": [
         {
           "url_pattern": "/auth/me",
           "method": "GET",
+          "encoding": "no-op",
           "host": ["http://identity-service:3001"]
         }
       ],
-      "extra_config": {
-        "auth/validator": {
-          "alg": "HS256",
-          "key": "your-jwt-secret-key",
-          "disable_jwk_security": true
-        }
-      }
+      "input_headers": ["*"]
     },
     {
       "endpoint": "/shorten",
@@ -108,7 +104,79 @@
           },
           "required": ["originalUrl"]
         }
-      }
+      },
+      "input_headers": ["*"]
+    },
+    {
+      "endpoint": "/my-urls",
+      "method": "GET",
+      "timeout": "10s",
+      "output_encoding": "no-op",
+      "backend": [
+        {
+          "url_pattern": "/my-urls",
+          "method": "GET",
+          "encoding": "no-op",
+          "host": ["http://url-shortener-service:3002"]
+        }
+      ],
+      "extra_config": {
+        "security/rate-limit": {
+          "max_rate": 100,
+          "capacity": 100,
+          "period": "1m"
+        },
+        "proxy": {
+          "static": {
+            "strategy": "always"
+          }
+        }
+      },
+      "input_headers": ["*"]
+    },
+    {
+      "endpoint": "/my-urls/{id}",
+      "method": "PUT",
+      "timeout": "10s",
+      "output_encoding": "no-op",
+      "backend": [
+        {
+          "url_pattern": "/my-urls/{id}",
+          "method": "PUT",
+          "encoding": "no-op",
+          "host": ["http://url-shortener-service:3002"]
+        }
+      ],
+      "extra_config": {
+        "security/rate-limit": {
+          "max_rate": 50,
+          "capacity": 50,
+          "period": "1m"
+        }
+      },
+      "input_headers": ["*"]
+    },
+    {
+      "endpoint": "/my-urls/{id}",
+      "method": "DELETE",
+      "timeout": "10s",
+      "output_encoding": "no-op",
+      "backend": [
+        {
+          "url_pattern": "/my-urls/{id}",
+          "method": "DELETE",
+          "encoding": "no-op",
+          "host": ["http://url-shortener-service:3002"]
+        }
+      ],
+      "extra_config": {
+        "security/rate-limit": {
+          "max_rate": 50,
+          "capacity": 50,
+          "period": "1m"
+        }
+      },
+      "input_headers": ["*"]
     },
     {
       "endpoint": "/info/{shortCode}",
@@ -192,6 +260,11 @@
   ],
 
   "extra_config": {
+    "proxy": {
+      "static": {
+        "strategy": "always"
+      }
+    },
     "security/cors": {
       "allow_origins": ["*"],
       "allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],

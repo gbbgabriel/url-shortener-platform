@@ -57,6 +57,9 @@ services:
       - PORT=${PORT}
       - BASE_URL=${BASE_URL}
       - REDIRECT_BASE_URL=${REDIRECT_BASE_URL}
+      # JWT Configuration (needed for v0.3.0 authentication)
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
       # Observability
       - ENABLE_SENTRY=${ENABLE_SENTRY}
       - ENABLE_METRICS=${ENABLE_METRICS}
@@ -87,8 +90,8 @@ services:
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://admin:password@postgres:5432/urlshortener
-      - JWT_SECRET=super-secret-jwt-key-for-development-only
-      - JWT_EXPIRES_IN=24h
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
       # Observability
       - ENABLE_SENTRY=${ENABLE_SENTRY}
       - ENABLE_METRICS=${ENABLE_METRICS}
@@ -137,6 +140,7 @@ services:
       - FC_ENABLE=1
       - FC_SETTINGS=/etc/krakend
       - FC_PARTIALS=/etc/krakend/partials
+      - JWT_SECRET=${JWT_SECRET}
     depends_on:
       - url-shortener-service
       - identity-service
