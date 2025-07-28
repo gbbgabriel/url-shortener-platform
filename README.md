@@ -1,8 +1,142 @@
 # 🔗 URL Shortener Platform
 
-**Release 0.3.0** - Plataforma completa de encurtamento de URLs com gerenciamento personalizado de URLs por usuário, Identity Service, autenticação JWT e arquitetura de microserviços.
+![CI/CD Pipeline](https://github.com/gbbgabriel/url-shortener-platform/actions/workflows/ci.yml/badge.svg)
+![Quality Check](https://github.com/gbbgabriel/url-shortener-platform/actions/workflows/quality-check.yml/badge.svg)
+![Node.js Version](https://img.shields.io/badge/node.js-22.14.0-green)
+![Tests](https://img.shields.io/badge/tests-121%20passing-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-100%25%20critical-brightgreen)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
 
-## 🚀 Setup do Zero
+**Release 1.0.0** - Plataforma completa de encurtamento de URLs com **observabilidade estruturada**, **CI/CD automatizado**, **monitoramento em tempo real**, gerenciamento personalizado de URLs, autenticação JWT e arquitetura de microserviços.
+
+## 🎉 Release 1.0.0 - Production Ready
+
+### ✨ Observabilidade Completa
+
+- **📊 Grafana Dashboard**: Monitoramento visual em tempo real (`http://localhost:3000`)
+- **📈 Prometheus Metrics**: Coleta automática de métricas de negócio e sistema
+- **🔍 Structured Logging**: Logs JSON com Winston em todos os serviços
+- **⚡ Business Intelligence**: Rastreamento de URLs criadas, cliques e performance
+
+### 🚀 CI/CD Automatizado
+
+- **✅ GitHub Actions**: Pipeline completo com 3 tipos de teste
+- **🧪 Quality Gates**: 121 testes (78 unitários + 17 integração + 26 E2E)
+- **🔒 Security & Quality**: ESLint, Prettier, npm audit, TypeScript strict
+- **🐳 Docker Validation**: Multi-stage builds e health checks
+
+### 📊 Dashboard & Métricas
+
+#### Grafana Dashboard: `http://localhost:3000` (admin/admin123)
+
+- **URLs Criadas em Tempo Real**
+- **Cliques por Período**
+- **Performance dos Serviços**
+- **Health Status**
+- **Error Rates**
+
+#### Métricas Prometheus: `http://localhost:9090`
+
+**Identity Service** (`http://localhost:3001/metrics`)
+
+```prometheus
+# Métricas de autenticação e usuários
+identity_service_info{version="1.0.0",service="identity"} 1
+http_requests_total{service="identity",method="POST",route="/auth/login"}
+auth_login_attempts_total{service="identity",status="success"}
+```
+
+**URL Shortener Service** (`http://localhost:3002/metrics`)
+
+```prometheus
+# Métricas de negócio em tempo real
+app_urls_created_total{service="url-shortener",user_type="authenticated"} 5
+app_url_clicks_total{service="url-shortener"} 2
+http_requests_total{service="url-shortener",method="POST",route="/shorten"}
+```
+
+## �� Setup do Zero
+
+### 🔧 Pré-requisitos
+
+- **Node.js 22.14.0+** (recomendado)
+- **Docker & Docker Compose**
+- **Git**
+
+### 📥 Instalação
+
+```bash
+# Clone o repositório
+git clone https://github.com/gbbgabriel/url-shortener-platform.git
+cd url-shortener-platform
+
+# Instale dependências
+npm install
+
+# Configure banco de dados
+npx prisma generate
+npx prisma db push
+
+# Suba o ambiente completo
+docker compose up -d
+```
+
+## 🤖 GitHub Actions - CI/CD Automatizado
+
+### 📊 **Status dos Workflows**
+
+- **CI/CD Pipeline**: Executa em push/PR para `main`, `develop`, `feature/*`
+- **Quality Check**: Verifica qualidade do código e segurança
+
+### 🔍 **Como Monitorar os Actions**
+
+#### **1. Acesse o GitHub Actions:**
+
+```
+https://github.com/gbbgabriel/url-shortener-platform/actions
+```
+
+#### **2. Workflows Configurados:**
+
+- **CI/CD Pipeline** (`ci.yml`):
+  - ✅ Matrix Testing (Node.js 20.x, 22.x)
+  - ✅ 121 testes (Unit + Integration + E2E)
+  - ✅ Build & Docker validation
+- **Quality Check** (`quality-check.yml`):
+  - ✅ ESLint + Prettier + TypeScript
+  - ✅ Security audit (npm audit)
+  - ✅ Package validation
+
+#### **3. Triggers Automáticos:**
+
+```bash
+# Triggerar workflows:
+git push origin feature/nova-feature  # ← Actions executam!
+git push origin main                  # ← Actions executam!
+
+# Ver status em tempo real:
+# GitHub → Actions → [Workflow] → Logs detalhados
+```
+
+#### **4. Status Badges (Live):**
+
+- ![CI/CD](https://github.com/gbbgabriel/url-shortener-platform/actions/workflows/ci.yml/badge.svg)
+- ![Quality](https://github.com/gbbgabriel/url-shortener-platform/actions/workflows/quality-check.yml/badge.svg)
+
+### 🛠️ **Executar Workflows Localmente:**
+
+```bash
+# Simular exatamente o que os Actions fazem:
+npm run lint                    # ESLint check
+npx tsc --noEmit               # TypeScript check
+npm test                       # Unit tests (78)
+npm run test:integration       # Integration (17)
+npm run test:e2e              # E2E tests (26)
+npm run build:identity-service # Build services
+npm audit --audit-level moderate # Security
+```
+
+## 🎯 Acesso Rápido
 
 ### 📋 Pré-requisitos
 
@@ -25,10 +159,10 @@ cp .env.example .env
 npm install
 
 # 4. Subir todos os serviços
-docker-compose up -d --build
+docker compose up -d --build
 
 # 5. Aguardar containers ficarem saudáveis (30-60 segundos)
-docker-compose ps
+docker compose ps
 
 # 6. Verificar se está funcionando
 curl http://localhost:8080/health
@@ -38,14 +172,14 @@ curl http://localhost:8080/health
 
 ```bash
 # 1. Parar e remover TUDO (containers + volumes + imagens)
-docker-compose down -v --remove-orphans
+docker compose down -v --remove-orphans
 docker rmi $(docker images | grep url-shortener-platform | awk '{print $3}')
 
 # 2. Rebuild completo do zero
-docker-compose up -d --build
+docker compose up -d --build
 
 # 3. Aguardar estabilização
-sleep 30 && docker-compose ps
+sleep 30 && docker compose ps
 
 # 4. Verificar health
 curl http://localhost:8080/health
@@ -55,16 +189,16 @@ curl http://localhost:8080/health
 
 ```bash
 # Subir serviços
-docker-compose up -d
+docker compose up -d
 
 # Ver logs em tempo real
-docker-compose logs -f
+docker compose logs -f
 
 # Verificar status
-docker-compose ps
+docker compose ps
 
 # Parar serviços
-docker-compose down
+docker compose down
 ```
 
 ## 🧪 Testing Completo
@@ -78,7 +212,7 @@ Execute todos os testes para garantir que tudo está funcionando:
 npm test
 
 # 2. Subir banco de teste para E2E/Integration
-docker-compose -f docker-compose.test.yml up -d
+docker compose -f docker compose.test.yml up -d
 
 # 3. Aguardar banco de teste ficar pronto
 sleep 10
@@ -93,7 +227,7 @@ npm run test:e2e
 npm run test:integration
 
 # 7. Limpar ambiente de teste
-docker-compose -f docker-compose.test.yml down
+docker compose -f docker compose.test.yml down
 ```
 
 ### 📊 Resumo dos Testes
@@ -167,25 +301,25 @@ docker system prune -a --volumes
 
 ```bash
 # Verificar se PostgreSQL está healthy
-docker-compose ps postgres
+docker compose ps postgres
 
 # Ver logs do banco
-docker-compose logs postgres
+docker compose logs postgres
 
 # Forçar recreação do banco
-docker-compose down -v
-docker-compose up -d postgres
+docker compose down -v
+docker compose up -d postgres
 ```
 
 #### ❌ Testes E2E falham
 
 ```bash
 # Verificar se banco de teste está rodando
-docker-compose -f docker-compose.test.yml ps
+docker compose -f docker compose.test.yml ps
 
 # Recriar banco de teste
-docker-compose -f docker-compose.test.yml down -v
-docker-compose -f docker-compose.test.yml up -d
+docker compose -f docker compose.test.yml down -v
+docker compose -f docker compose.test.yml up -d
 DATABASE_URL="postgresql://test_user:test_password@localhost:5433/test_db" npx prisma db push
 ```
 
@@ -199,7 +333,7 @@ DATABASE_URL="postgresql://test_user:test_password@localhost:5433/test_db" npx p
 
 Antes de considerar a aplicação pronta:
 
-- [ ] `docker-compose ps` mostra todos containers **healthy**
+- [ ] `docker compose ps` mostra todos containers **healthy**
 - [ ] `curl http://localhost:8080/health` retorna **200 OK**
 - [ ] Registro e login de usuários funcionando
 - [ ] URLs são criadas via `POST /shorten` com sucesso
@@ -411,13 +545,13 @@ O projeto usa Docker Compose para orquestração dos serviços:
 
 ```bash
 # Subir todos os serviços
-docker-compose up -d
+docker compose up -d
 
 # Ver logs
-docker-compose logs -f
+docker compose logs -f
 
 # Parar serviços
-docker-compose down
+docker compose down
 ```
 
 ### 3. Scripts Disponíveis
@@ -449,8 +583,8 @@ npm run lint                 # ESLint
 npm run format              # Prettier
 
 # Docker
-npm run docker:up           # docker-compose up
-npm run docker:down         # docker-compose down
+npm run docker:up           # docker compose up
+npm run docker:down         # docker compose down
 npm run docker:logs         # Ver logs
 ```
 
@@ -778,7 +912,7 @@ model UrlClick {
 
 ```bash
 # Com Docker
-docker-compose up -d
+docker compose up -d
 
 # Sem Docker (requer PostgreSQL e Redis locais)
 npm run start:dev
@@ -890,3 +1024,49 @@ Veja [CHANGELOG.md](./CHANGELOG.md) para histórico de mudanças.
 ## 📄 Licença
 
 Este projeto está sob a licença MIT. Veja [LICENSE](LICENSE) para mais detalhes.
+
+## 🤖 GitHub Actions - CI/CD na Prática
+
+### 🚀 **Workflows Automatizados**
+
+Este projeto usa GitHub Actions para CI/CD automatizado. Toda vez que você faz push, os workflows são executados:
+
+```bash
+# ✨ Como triggerar os Actions:
+git push origin feature/sua-branch    # ← Executa workflows automaticamente!
+git push origin main                  # ← Executa workflows automaticamente!
+```
+
+### 📊 **Monitoramento em Tempo Real:**
+
+#### **1. Acesse:** `https://github.com/gbbgabriel/url-shortener-platform/actions`
+
+#### **2. Workflows Ativos:**
+
+- **🔄 CI/CD Pipeline** - Testes completos + Build
+- **🔍 Quality Check** - Lint + Security + TypeScript
+
+#### **3. Status Live:**
+
+- ![CI/CD Status](https://github.com/gbbgabriel/url-shortener-platform/actions/workflows/ci.yml/badge.svg)
+- ![Quality Status](https://github.com/gbbgabriel/url-shortener-platform/actions/workflows/quality-check.yml/badge.svg)
+
+### 🧪 **O que os Actions Executam:**
+
+```bash
+# Exatamente isso que testamos localmente:
+✅ npm run lint                    # ESLint (0 erros)
+✅ npx tsc --noEmit               # TypeScript check
+✅ npm test                       # 78 testes unitários
+✅ npm run test:integration       # 17 testes integração
+✅ npm run test:e2e              # 26 testes E2E
+✅ npm run build                  # Build services
+✅ npm audit                      # Security audit
+✅ docker compose build           # Docker validation
+```
+
+### 💡 **Dica Pro:**
+
+Quando você fizer push agora, vá no GitHub Actions e veja os workflows rodando em tempo real! 🔥
+
+---

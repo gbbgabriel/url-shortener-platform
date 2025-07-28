@@ -1,0 +1,42 @@
+name: Quality Check
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint check
+        run: npm run lint
+
+      - name: Prettier check
+        run: npx prettier --check "apps/**/*.ts" "libs/**/*.ts"
+
+      - name: TypeScript compilation
+        run: npx tsc --noEmit
+
+      - name: Security audit
+        run: npm audit --audit-level moderate
+
+      - name: Check for outdated packages
+        run: npm outdated || true
+
+      - name: Validate package.json
+        run: npx npm-check-updates --errorLevel 1

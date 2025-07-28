@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { UrlShortenerServiceService } from './url-shortener-service.service';
 import { PrismaService } from '@app/prisma';
+import { MetricsService } from '@app/observability';
+import { UrlShortenerServiceService } from './url-shortener-service.service';
 
 // Mock do módulo url-utils
 jest.mock('../../../common/utils/url-utils', () => ({
@@ -14,16 +15,6 @@ import {
   isValidUrl,
   generateRandomCode,
 } from '../../../common/utils/url-utils';
-
-interface MockTransactionClient {
-  shortUrl: {
-    findUniqueOrThrow: jest.Mock;
-    update: jest.Mock;
-  };
-  urlClick: {
-    create: jest.Mock;
-  };
-}
 
 describe('UrlShortenerServiceService', () => {
   let service: UrlShortenerServiceService;
@@ -48,6 +39,13 @@ describe('UrlShortenerServiceService', () => {
     $transaction: jest.fn(),
   };
 
+  const mockMetricsService = {
+    incrementUrlCreated: jest.fn(),
+    incrementUrlClick: jest.fn(),
+    incrementHttpRequests: jest.fn(),
+    observeHttpDuration: jest.fn(),
+  };
+
   const mockShortUrl = {
     id: 'shorturl-uuid-123',
     shortCode: 'abc123',
@@ -66,6 +64,10 @@ describe('UrlShortenerServiceService', () => {
         {
           provide: PrismaService,
           useValue: mockPrismaService,
+        },
+        {
+          provide: MetricsService,
+          useValue: mockMetricsService,
         },
       ],
     }).compile();
@@ -194,36 +196,17 @@ describe('UrlShortenerServiceService', () => {
 
     it('should redirect successfully and record click', async () => {
       mockPrismaService.shortUrl.findUnique.mockResolvedValue(mockShortUrl);
-
-      // Mock da transação com tipo correto
-      const mockTransaction = jest
-        .fn()
-        .mockImplementation(
-          async (
-            callback: (client: MockTransactionClient) => Promise<void>,
-          ) => {
-            const mockClient: MockTransactionClient = {
-              shortUrl: {
-                findUniqueOrThrow: jest
-                  .fn()
-                  .mockResolvedValue({ id: mockShortUrl.id }),
-                update: jest.fn().mockResolvedValue({}),
-              },
-              urlClick: {
-                create: jest.fn().mockResolvedValue({}),
-              },
-            };
-            return await callback(mockClient);
-          },
-        );
-      mockPrismaService.$transaction.mockImplementation(mockTransaction);
+      mockPrismaService.shortUrl.update.mockResolvedValue({});
 
       const result = await service.redirect(shortCode);
 
       expect(result).toBe(mockShortUrl.originalUrl);
       expect(mockPrismaService.shortUrl.findUnique).toHaveBeenCalledWith({
-        where: { shortCode },
+        where: { shortCode, deletedAt: null },
       });
+      expect(mockMetricsService.incrementUrlClick).toHaveBeenCalledWith(
+        'url-shortener',
+      );
     });
 
     it('should throw NotFoundException for non-existent URL', async () => {

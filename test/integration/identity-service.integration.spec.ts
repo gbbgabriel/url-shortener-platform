@@ -11,6 +11,7 @@ import { UsersService } from '../../apps/identity-service/src/users/users.servic
 import { HashService } from '../../apps/identity-service/src/common/services/hash.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { LoggerService, MetricsService } from '@app/observability';
 
 describe('Identity Service - REAL Integration Tests', () => {
   let authService: AuthService;
@@ -41,8 +42,26 @@ describe('Identity Service - REAL Integration Tests', () => {
             get: jest.fn((key: string) => {
               if (key === 'JWT_SECRET') return 'test-secret-integration';
               if (key === 'JWT_EXPIRES_IN') return '24h';
-              return undefined;
+              return null;
             }),
+          },
+        },
+        {
+          provide: LoggerService,
+          useValue: {
+            log: jest.fn(),
+            error: jest.fn(),
+            warn: jest.fn(),
+            debug: jest.fn(),
+          },
+        },
+        {
+          provide: MetricsService,
+          useValue: {
+            incrementHttpRequests: jest.fn(),
+            observeHttpDuration: jest.fn(),
+            incrementUrlCreated: jest.fn(),
+            incrementUrlClick: jest.fn(),
           },
         },
       ],

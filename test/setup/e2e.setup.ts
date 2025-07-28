@@ -1,21 +1,42 @@
 import { PrismaClient } from '@prisma/client';
 
+// Use DATABASE_URL from environment (CI) or fallback to local config
+const databaseUrl =
+  process.env.DATABASE_URL ||
+  'postgresql://admin:password@localhost:5432/urlshortener';
+
 const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: 'postgresql://admin:password@localhost:5432/urlshortener',
+      url: databaseUrl,
     },
   },
 });
 
 beforeAll(async () => {
-  // Conectar ao banco de desenvolvimento para testes
-  await prisma.$connect();
-  console.log('🔗 Connected to development database for E2E');
+  // Conectar ao banco de desenvolvimento para testes com retry para CI
+  let retries = 5;
+  while (retries > 0) {
+    try {
+      await prisma.$connect();
+      console.log('🔗 Connected to development database for E2E');
+      break;
+    } catch (error) {
+      retries--;
+      if (retries === 0) {
+        console.error('❌ Failed to connect to database after retries:', error);
+        throw error;
+      }
+      console.log(
+        `🔄 Retrying database connection... (${retries} attempts left)`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  }
 
   // Aguardar um pouco para garantir que a aplicação está rodando
   await new Promise((resolve) => setTimeout(resolve, 1000));
-});
+}, 30000); // Aumentar timeout para 30s no CI
 
 beforeEach(async () => {
   // Limpar dados de teste entre testes para isolamento
