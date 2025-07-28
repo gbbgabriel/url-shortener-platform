@@ -5,14 +5,26 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.1] - 2025-07-28
 
-### 🎯 Next Release (1.1.0)
+### 🔧 Correções
 
-- **Objetivo**: Analytics Avançado + Enhanced Observability
-- **Escopo**: Métricas em tempo real, geolocalização, dashboards visuais, distributed tracing
+- **Dashboard Grafana**: Corrigidos nomes das métricas na dashboard
+  - `app_urls_created_total` → `urls_created_total`
+  - `app_url_clicks_total` → `url_clicks_total`
+- **Observabilidade**: Dashboard agora exibe dados corretamente
+  - Painel "Status dos Serviços" adicionado
+  - Métricas atualizando em tempo real
+  - Problema "No data" resolvido
 
----
+### 📊 Melhorias
+
+- **Dashboard Completa**: 5 painéis funcionais
+  - Taxa de Criação de URLs
+  - Total de URLs Criadas
+  - Taxa de Cliques em URLs
+  - Total de Cliques
+  - Status dos Serviços (UP/DOWN)
 
 ## [1.0.0] - 2025-01-28
 
