@@ -77,6 +77,53 @@ services:
       - urlshortener-network
 
   # ===========================================
+  # IDENTITY SERVICE (Release 0.2.0)
+  # ===========================================
+  identity-service:
+    build:
+      context: .
+      dockerfile: apps/identity-service/Dockerfile
+    container_name: urlshortener-identity-service
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://admin:password@postgres:5432/urlshortener
+      - JWT_SECRET=super-secret-jwt-key-for-development-only
+      - JWT_EXPIRES_IN=24h
+      # Observability
+      - ENABLE_SENTRY=${ENABLE_SENTRY}
+      - ENABLE_METRICS=${ENABLE_METRICS}
+      - LOG_LEVEL=${LOG_LEVEL}
+    ports:
+      - '3001:3001'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3001/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - urlshortener-network
+
+  # ===========================================
+  # DOCUMENTATION SERVER
+  # ===========================================
+  docs-server:
+    image: nginx:1.25-alpine
+    container_name: urlshortener-docs
+    volumes:
+      - ./gateway/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./gateway/nginx/index.html:/usr/share/nginx/html/index.html:ro
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - urlshortener-network
+
+  # ===========================================
   # API GATEWAY
   # ===========================================
   krakend:
@@ -92,6 +139,8 @@ services:
       - FC_PARTIALS=/etc/krakend/partials
     depends_on:
       - url-shortener-service
+      - identity-service
+      - docs-server
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:${KRAKEND_PORT}/__health']
       interval: 30s

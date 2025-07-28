@@ -19,6 +19,15 @@
         "tsConfigPath": "apps/url-shortener-service/tsconfig.app.json"
       }
     },
+    "identity-service": {
+      "type": "application",
+      "root": "apps/identity-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/identity-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/identity-service/tsconfig.app.json"
+      }
+    },
     "prisma": {
       "type": "library",
       "root": "libs/prisma",
