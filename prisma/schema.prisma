@@ -1,5 +1,5 @@
 // =======================================================
-// Prisma Schema - Release 0.1.0: Basic URL Shortener
+// Prisma Schema - Release 0.2.0: Identity + URL Shortener
 // =======================================================
 
 generator client {
@@ -12,22 +12,46 @@ datasource db {
 }
 
 // ===========================================
-// CORE TABLES - Release 0.1.0
+// USER MANAGEMENT - Release 0.2.0
+// ===========================================
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  // Relationships
+  shortUrls ShortUrl[]
+
+  @@index([email])
+  @@index([createdAt])
+  @@map("users")
+}
+
+// ===========================================
+// CORE TABLES - Enhanced in Release 0.2.0
 // ===========================================
 
 model ShortUrl {
   id          String    @id @default(uuid())
   shortCode   String    @unique @map("short_code") @db.VarChar(6)
   originalUrl String    @map("original_url") @db.Text
+  userId      String?   @map("user_id") // Optional - for anonymous URLs
   clickCount  Int       @default(0) @map("click_count")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
 
-  // Relationship with clicks
+  // Relationships
+  user   User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
   clicks UrlClick[]
 
   @@index([shortCode])
+  @@index([userId])
   @@index([createdAt])
   @@map("short_urls")
 }

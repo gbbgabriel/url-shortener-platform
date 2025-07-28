@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URL Shortener Platform - API Documentation</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+      color: white;
+      padding: 3rem 2rem;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      font-weight: 700;
+    }
+
+    .header p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #48bb78;
+      color: white;
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-top: 1rem;
+    }
+
+    .services {
+      padding: 3rem 2rem;
+    }
+
+    .services h2 {
+      text-align: center;
+      margin-bottom: 3rem;
+      color: #2d3748;
+      font-size: 2rem;
+    }
+
+    .service-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 2rem;
+      margin-bottom: 3rem;
+    }
+
+    .service-card {
+      background: #f7fafc;
+      border-radius: 12px;
+      padding: 2rem;
+      border: 2px solid #e2e8f0;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .service-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      border-color: #667eea;
+    }
+
+    .service-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+    }
+
+    .service-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 1rem;
+    }
+
+    .service-description {
+      color: #4a5568;
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+    }
+
+    .service-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .service-info span {
+      font-size: 0.9rem;
+      color: #718096;
+    }
+
+    .service-info .port {
+      font-weight: 600;
+      color: #2d3748;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5a67d8;
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background: #edf2f7;
+      color: #4a5568;
+      border: 1px solid #e2e8f0;
+    }
+
+    .btn-secondary:hover {
+      background: #e2e8f0;
+      transform: translateY(-2px);
+    }
+
+    .icon {
+      width: 16px;
+      height: 16px;
+    }
+
+    .gateway-info {
+      background: #f0fff4;
+      border: 2px solid #68d391;
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    .gateway-info h3 {
+      color: #22543d;
+      margin-bottom: 1rem;
+      font-size: 1.3rem;
+    }
+
+    .gateway-info p {
+      color: #2f855a;
+      margin-bottom: 1.5rem;
+    }
+
+    .endpoint-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .endpoint {
+      background: white;
+      padding: 0.5rem;
+      border-radius: 6px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 0.85rem;
+      color: #22543d;
+      border: 1px solid #c6f6d5;
+    }
+
+    .footer {
+      background: #2d3748;
+      color: white;
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .footer p {
+      opacity: 0.8;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 1rem;
+      }
+
+      .header h1 {
+        font-size: 2rem;
+      }
+
+      .service-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .button-group {
+        flex-direction: column;
+      }
+
+      .btn {
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🚀 URL Shortener Platform</h1>
+      <p>Documentação Completa da API - Arquitetura de Microserviços</p>
+      <span class="badge">Release 0.2.0</span>
+    </div>
+
+    <div class="services">
+      <h2>📚 Documentação por Serviço</h2>
+
+      <div class="service-grid">
+        <div class="service-card">
+          <div class="service-title">🔐 Identity Service</div>
+          <div class="service-description">
+            Gerenciamento de usuários, autenticação JWT e autorização.
+            Responsável por login, registro e validação de tokens.
+          </div>
+          <div class="service-info">
+            <span>Porta:</span>
+            <span class="port">3001</span>
+          </div>
+          <div class="button-group">
+                                    <a href="http://localhost:3001/api/docs" class="btn btn-primary" target="_blank" rel="noopener">
+                            📖 Swagger Docs
+                        </a>
+                        <a href="http://localhost:3001/health" class="btn btn-secondary" target="_blank" rel="noopener">
+                            ❤️ Health Check
+                        </a>
+          </div>
+        </div>
+
+        <div class="service-card">
+          <div class="service-title">🔗 URL Shortener Service</div>
+          <div class="service-description">
+            Core do encurtamento de URLs, redirecionamento e analytics.
+            Gera códigos únicos de 6 caracteres e rastreia cliques.
+          </div>
+          <div class="service-info">
+            <span>Porta:</span>
+            <span class="port">3002</span>
+          </div>
+          <div class="button-group">
+                                    <a href="http://localhost:3002/api/docs" class="btn btn-primary" target="_blank" rel="noopener">
+                            📖 Swagger Docs
+                        </a>
+                        <a href="http://localhost:3002/health" class="btn btn-secondary" target="_blank" rel="noopener">
+                            ❤️ Health Check
+                        </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="gateway-info">
+        <h3>🌐 API Gateway (KrakenD)</h3>
+        <p>
+          <strong>Ponto de entrada único:</strong> http://localhost:8080<br>
+          Todos os endpoints estão disponíveis através do gateway com rate limiting,
+          validação e autenticação centralizadas.
+        </p>
+
+        <div class="endpoint-list">
+          <div class="endpoint">POST /auth/login</div>
+          <div class="endpoint">POST /auth/register</div>
+          <div class="endpoint">GET /auth/me</div>
+          <div class="endpoint">POST /shorten</div>
+          <div class="endpoint">GET /info/{code}</div>
+          <div class="endpoint">GET /{shortCode}</div>
+        </div>
+
+        <div style="margin-top: 1.5rem;">
+          <a href="http://localhost:8080/health" class="btn btn-primary">
+            🏥 Gateway Health
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>
+        🏗️ Arquitetura: Microserviços | 🛡️ Gateway: KrakenD |
+        💾 Database: PostgreSQL | 🚀 Framework: NestJS
+      </p>
+    </div>
+  </div>
+</body>
+
+</html>
