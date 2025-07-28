@@ -78,7 +78,7 @@ npx prisma generate
 npx prisma db push
 
 # Suba o ambiente completo
-docker-compose up -d
+docker compose up -d
 ```
 
 ## 🤖 GitHub Actions - CI/CD Automatizado
@@ -159,10 +159,10 @@ cp .env.example .env
 npm install
 
 # 4. Subir todos os serviços
-docker-compose up -d --build
+docker compose up -d --build
 
 # 5. Aguardar containers ficarem saudáveis (30-60 segundos)
-docker-compose ps
+docker compose ps
 
 # 6. Verificar se está funcionando
 curl http://localhost:8080/health
@@ -172,14 +172,14 @@ curl http://localhost:8080/health
 
 ```bash
 # 1. Parar e remover TUDO (containers + volumes + imagens)
-docker-compose down -v --remove-orphans
+docker compose down -v --remove-orphans
 docker rmi $(docker images | grep url-shortener-platform | awk '{print $3}')
 
 # 2. Rebuild completo do zero
-docker-compose up -d --build
+docker compose up -d --build
 
 # 3. Aguardar estabilização
-sleep 30 && docker-compose ps
+sleep 30 && docker compose ps
 
 # 4. Verificar health
 curl http://localhost:8080/health
@@ -189,16 +189,16 @@ curl http://localhost:8080/health
 
 ```bash
 # Subir serviços
-docker-compose up -d
+docker compose up -d
 
 # Ver logs em tempo real
-docker-compose logs -f
+docker compose logs -f
 
 # Verificar status
-docker-compose ps
+docker compose ps
 
 # Parar serviços
-docker-compose down
+docker compose down
 ```
 
 ## 🧪 Testing Completo
@@ -212,7 +212,7 @@ Execute todos os testes para garantir que tudo está funcionando:
 npm test
 
 # 2. Subir banco de teste para E2E/Integration
-docker-compose -f docker-compose.test.yml up -d
+docker compose -f docker compose.test.yml up -d
 
 # 3. Aguardar banco de teste ficar pronto
 sleep 10
@@ -227,7 +227,7 @@ npm run test:e2e
 npm run test:integration
 
 # 7. Limpar ambiente de teste
-docker-compose -f docker-compose.test.yml down
+docker compose -f docker compose.test.yml down
 ```
 
 ### 📊 Resumo dos Testes
@@ -301,25 +301,25 @@ docker system prune -a --volumes
 
 ```bash
 # Verificar se PostgreSQL está healthy
-docker-compose ps postgres
+docker compose ps postgres
 
 # Ver logs do banco
-docker-compose logs postgres
+docker compose logs postgres
 
 # Forçar recreação do banco
-docker-compose down -v
-docker-compose up -d postgres
+docker compose down -v
+docker compose up -d postgres
 ```
 
 #### ❌ Testes E2E falham
 
 ```bash
 # Verificar se banco de teste está rodando
-docker-compose -f docker-compose.test.yml ps
+docker compose -f docker compose.test.yml ps
 
 # Recriar banco de teste
-docker-compose -f docker-compose.test.yml down -v
-docker-compose -f docker-compose.test.yml up -d
+docker compose -f docker compose.test.yml down -v
+docker compose -f docker compose.test.yml up -d
 DATABASE_URL="postgresql://test_user:test_password@localhost:5433/test_db" npx prisma db push
 ```
 
@@ -333,7 +333,7 @@ DATABASE_URL="postgresql://test_user:test_password@localhost:5433/test_db" npx p
 
 Antes de considerar a aplicação pronta:
 
-- [ ] `docker-compose ps` mostra todos containers **healthy**
+- [ ] `docker compose ps` mostra todos containers **healthy**
 - [ ] `curl http://localhost:8080/health` retorna **200 OK**
 - [ ] Registro e login de usuários funcionando
 - [ ] URLs são criadas via `POST /shorten` com sucesso
@@ -545,13 +545,13 @@ O projeto usa Docker Compose para orquestração dos serviços:
 
 ```bash
 # Subir todos os serviços
-docker-compose up -d
+docker compose up -d
 
 # Ver logs
-docker-compose logs -f
+docker compose logs -f
 
 # Parar serviços
-docker-compose down
+docker compose down
 ```
 
 ### 3. Scripts Disponíveis
@@ -583,8 +583,8 @@ npm run lint                 # ESLint
 npm run format              # Prettier
 
 # Docker
-npm run docker:up           # docker-compose up
-npm run docker:down         # docker-compose down
+npm run docker:up           # docker compose up
+npm run docker:down         # docker compose down
 npm run docker:logs         # Ver logs
 ```
 
@@ -912,7 +912,7 @@ model UrlClick {
 
 ```bash
 # Com Docker
-docker-compose up -d
+docker compose up -d
 
 # Sem Docker (requer PostgreSQL e Redis locais)
 npm run start:dev
@@ -1062,7 +1062,7 @@ git push origin main                  # ← Executa workflows automaticamente!
 ✅ npm run test:e2e              # 26 testes E2E
 ✅ npm run build                  # Build services
 ✅ npm audit                      # Security audit
-✅ docker-compose build           # Docker validation
+✅ docker compose build           # Docker validation
 ```
 
 ### 💡 **Dica Pro:**
