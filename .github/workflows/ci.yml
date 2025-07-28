@@ -95,13 +95,13 @@ jobs:
 
       - name: Build Docker images
         run: |
-          docker-compose build
+          docker compose build
 
       - name: Test Docker health
         run: |
-          docker-compose up -d
+          docker compose up -d
           sleep 30
-          docker-compose ps
+          docker compose ps
 
       - name: Cleanup
-        run: docker-compose down
+        run: docker compose down
