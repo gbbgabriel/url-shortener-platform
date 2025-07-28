@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { UrlShortenerServiceService } from '../../apps/url-shortener-service/src/modules/url-shortener/services/url-shortener-service.service';
 import { PrismaService } from '@app/prisma';
+import { MetricsService } from '@app/observability';
 import { testDb } from '../setup/integration.setup';
 import { CreateUrlResponse } from '../../apps/url-shortener-service/src/common/types/test-responses';
 
@@ -15,6 +16,15 @@ describe('URL Shortener Service - Integration Tests', () => {
         {
           provide: PrismaService,
           useValue: testDb,
+        },
+        {
+          provide: MetricsService,
+          useValue: {
+            incrementUrlCreated: jest.fn(),
+            incrementUrlClick: jest.fn(),
+            incrementHttpRequests: jest.fn(),
+            observeHttpDuration: jest.fn(),
+          },
         },
       ],
     }).compile();

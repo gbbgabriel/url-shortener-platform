@@ -1,9 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { UnauthorizedException, ConflictException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
+import { LoggerService } from '@app/observability';
+import { MetricsService } from '@app/observability';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -22,6 +24,20 @@ describe('AuthService', () => {
     get: jest.fn(),
   };
 
+  const mockLoggerService = {
+    log: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+  };
+
+  const mockMetricsService = {
+    incrementHttpRequests: jest.fn(),
+    observeHttpDuration: jest.fn(),
+    incrementUrlCreated: jest.fn(),
+    incrementUrlClick: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -37,6 +53,14 @@ describe('AuthService', () => {
         {
           provide: ConfigService,
           useValue: mockConfigService,
+        },
+        {
+          provide: LoggerService,
+          useValue: mockLoggerService,
+        },
+        {
+          provide: MetricsService,
+          useValue: mockMetricsService,
         },
       ],
     }).compile();
@@ -65,10 +89,15 @@ describe('AuthService', () => {
 
       const result = await service.login(loginDto);
 
-      expect(result.accessToken).toBe(mockToken);
+      expect(result.accessToken).toBe('mock.jwt.token');
       expect(result.tokenType).toBe('Bearer');
       expect(result.expiresIn).toBe('24h');
-      expect(result.user).toEqual(mockUser);
+      expect(result.user).toEqual({
+        id: mockUser.id,
+        email: mockUser.email,
+        isActive: mockUser.isActive,
+        createdAt: mockUser.createdAt,
+      });
     });
 
     it('should throw UnauthorizedException for invalid credentials', async () => {

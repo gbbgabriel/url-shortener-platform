@@ -1,0 +1,27 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Prometheus próprio
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Identity Service
+  - job_name: 'identity-service'
+    static_configs:
+      - targets: ['identity-service:3001']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  # URL Shortener Service
+  - job_name: 'url-shortener-service'
+    static_configs:
+      - targets: ['url-shortener-service:3002']
+    metrics_path: '/metrics'
+    scrape_interval: 5s

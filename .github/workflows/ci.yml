@@ -1,0 +1,146 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop, feature/*]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5433:5432
+
+    strategy:
+      matrix:
+        node-version: [20.x, 22.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for PostgreSQL
+        run: |
+          echo "Waiting for PostgreSQL to be ready..."
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5433 -U test_user; then
+              echo "PostgreSQL is ready!"
+              break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+          done
+
+      - name: Lint check
+        run: npm run lint
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build services
+        run: |
+          npm run build:identity-service
+          npm run build:url-shortener-service
+
+      - name: Setup test database
+        run: |
+          DATABASE_URL="postgresql://test_user:test_password@localhost:5433/test_db" npx prisma db push
+
+      - name: Integration tests
+        run: npm run test:integration
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5433/test_db
+
+      - name: E2E tests
+        run: npm run test:e2e
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5433/test_db
+
+      - name: Test coverage
+        run: npm run test:cov
+
+  build-docker:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker images
+        run: |
+          docker compose build
+        env:
+          NODE_ENV: development
+          PORT: 3002
+          BASE_URL: http://localhost:8080
+          REDIRECT_BASE_URL: http://localhost:3002
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci-test-jwt-secret-not-for-production' }}
+          JWT_EXPIRES_IN: 24h
+          ENABLE_SENTRY: false
+          ENABLE_METRICS: true
+          LOG_LEVEL: info
+          POSTGRES_VOLUME_NAME: postgres_data
+          REDIS_VOLUME_NAME: redis_data
+          NETWORK_NAME: urlshortener_network
+
+      - name: Test Docker health
+        run: |
+          docker compose up -d
+          sleep 30
+          docker compose ps
+        env:
+          NODE_ENV: development
+          PORT: 3002
+          BASE_URL: http://localhost:8080
+          REDIRECT_BASE_URL: http://localhost:3002
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci-test-jwt-secret-not-for-production' }}
+          JWT_EXPIRES_IN: 24h
+          ENABLE_SENTRY: false
+          ENABLE_METRICS: true
+          LOG_LEVEL: info
+          POSTGRES_VOLUME_NAME: postgres_data
+          REDIS_VOLUME_NAME: redis_data
+          NETWORK_NAME: urlshortener_network
+
+      - name: Cleanup
+        run: docker compose down
+        env:
+          NODE_ENV: development
+          PORT: 3002
+          BASE_URL: http://localhost:8080
+          REDIRECT_BASE_URL: http://localhost:3002
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci-test-jwt-secret-not-for-production' }}
+          JWT_EXPIRES_IN: 24h
+          ENABLE_SENTRY: false
+          ENABLE_METRICS: true
+          LOG_LEVEL: info
+          POSTGRES_VOLUME_NAME: postgres_data
+          REDIS_VOLUME_NAME: redis_data
+          NETWORK_NAME: urlshortener_network

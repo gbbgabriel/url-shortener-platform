@@ -38,7 +38,7 @@ import {
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 
-// DTOs importados de arquivos separados
+// DTOs imported from separate files
 
 @Controller()
 @ApiTags('url-shortener')
