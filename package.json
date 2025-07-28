@@ -1,7 +1,7 @@
 {
   "name": "url-shortener-platform",
-  "version": "0.2.0",
-  "description": "URL Shortener Platform - Release 0.2.0: Identity Service + JWT Authentication",
+  "version": "0.3.0",
+  "description": "URL Shortener Platform - Release 0.3.0: User URL Management + Personal Dashboard",
   "author": "Gabriel Barbosa",
   "private": true,
   "license": "MIT",

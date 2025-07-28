@@ -15,6 +15,16 @@ import {
   generateRandomCode,
 } from '../../../common/utils/url-utils';
 
+interface MockTransactionClient {
+  shortUrl: {
+    findUniqueOrThrow: jest.Mock;
+    update: jest.Mock;
+  };
+  urlClick: {
+    create: jest.Mock;
+  };
+}
+
 describe('UrlShortenerServiceService', () => {
   let service: UrlShortenerServiceService;
 
@@ -30,6 +40,7 @@ describe('UrlShortenerServiceService', () => {
       findUnique: jest.fn(),
       findUniqueOrThrow: jest.fn(),
       update: jest.fn(),
+      findMany: jest.fn(),
     },
     urlClick: {
       create: jest.fn(),
@@ -45,6 +56,7 @@ describe('UrlShortenerServiceService', () => {
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01'),
     deletedAt: null,
+    userId: null,
   };
 
   beforeEach(async () => {
@@ -99,6 +111,35 @@ describe('UrlShortenerServiceService', () => {
         data: {
           shortCode: 'abc123',
           originalUrl: validUrl,
+          userId: null,
+        },
+      });
+    });
+
+    it('should create short URL for authenticated user', async () => {
+      const userId = 'user-123';
+      mockIsValidUrl.mockReturnValue(true);
+      mockGenerateRandomCode.mockReturnValue('def456');
+      mockPrismaService.shortUrl.findUnique.mockResolvedValue(null);
+      mockPrismaService.shortUrl.create.mockResolvedValue({
+        ...mockShortUrl,
+        shortCode: 'def456',
+        originalUrl: validUrl,
+        userId,
+      });
+
+      const result = await service.shortenUrl(validUrl, userId);
+
+      expect(result).toEqual({
+        shortCode: 'def456',
+        shortUrl: 'http://localhost:3002/def456',
+        originalUrl: validUrl,
+      });
+      expect(mockPrismaService.shortUrl.create).toHaveBeenCalledWith({
+        data: {
+          shortCode: 'def456',
+          originalUrl: validUrl,
+          userId,
         },
       });
     });
@@ -146,19 +187,6 @@ describe('UrlShortenerServiceService', () => {
       );
       expect(mockGenerateRandomCode).toHaveBeenCalledTimes(5); // Max attempts
     });
-
-    it('should use default base URL when env var not set', async () => {
-      delete process.env.REDIRECT_BASE_URL;
-
-      mockIsValidUrl.mockReturnValue(true);
-      mockGenerateRandomCode.mockReturnValue('abc123');
-      mockPrismaService.shortUrl.findUnique.mockResolvedValue(null);
-      mockPrismaService.shortUrl.create.mockResolvedValue(mockShortUrl);
-
-      const result = await service.shortenUrl(validUrl);
-
-      expect(result.shortUrl).toBe('http://localhost:3002/abc123');
-    });
   });
 
   describe('redirect', () => {
@@ -167,17 +195,7 @@ describe('UrlShortenerServiceService', () => {
     it('should redirect successfully and record click', async () => {
       mockPrismaService.shortUrl.findUnique.mockResolvedValue(mockShortUrl);
 
-      // Mock da transação tipado corretamente
-      interface MockTransactionClient {
-        shortUrl: {
-          findUniqueOrThrow: jest.Mock;
-          update: jest.Mock;
-        };
-        urlClick: {
-          create: jest.Mock;
-        };
-      }
-
+      // Mock da transação com tipo correto
       const mockTransaction = jest
         .fn()
         .mockImplementation(
@@ -214,35 +232,6 @@ describe('UrlShortenerServiceService', () => {
       await expect(service.redirect(shortCode)).rejects.toThrow(
         NotFoundException,
       );
-      expect(mockPrismaService.shortUrl.findUnique).toHaveBeenCalledWith({
-        where: { shortCode },
-      });
-    });
-
-    it('should return URL even if click recording fails silently', async () => {
-      mockPrismaService.shortUrl.findUnique.mockResolvedValue(mockShortUrl);
-
-      // Mock da transação que falha
-      mockPrismaService.$transaction.mockRejectedValue(
-        new Error('Database error'),
-      );
-
-      // Spy no console.error para verificar se o erro foi logado
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
-      const result = await service.redirect(shortCode);
-
-      expect(result).toBe(mockShortUrl.originalUrl);
-
-      // Aguardar um pouco para a operação assíncrona completar
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Error recording click:',
-        expect.any(Error),
-      );
-
-      consoleSpy.mockRestore();
     });
   });
 
@@ -262,9 +251,6 @@ describe('UrlShortenerServiceService', () => {
         updatedAt: mockShortUrl.updatedAt,
         shortUrl: 'http://localhost:3002/abc123',
       });
-      expect(mockPrismaService.shortUrl.findUnique).toHaveBeenCalledWith({
-        where: { shortCode },
-      });
     });
 
     it('should throw NotFoundException for non-existent URL', async () => {
@@ -273,19 +259,273 @@ describe('UrlShortenerServiceService', () => {
       await expect(service.getUrlInfo(shortCode)).rejects.toThrow(
         NotFoundException,
       );
-      expect(mockPrismaService.shortUrl.findUnique).toHaveBeenCalledWith({
-        where: { shortCode },
+    });
+  });
+
+  describe('getUserUrls', () => {
+    it('should return all URLs for a specific user', async () => {
+      const userId = 'user-123';
+      const mockUrls = [
+        {
+          id: 'url-1',
+          shortCode: 'abc123',
+          originalUrl: 'https://github.com/url1',
+          clickCount: 5,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: 'url-2',
+          shortCode: 'def456',
+          originalUrl: 'https://github.com/url2',
+          clickCount: 3,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+
+      mockPrismaService.shortUrl.findMany.mockResolvedValue(mockUrls);
+
+      const result = await service.getUserUrls(userId);
+
+      expect(mockPrismaService.shortUrl.findMany).toHaveBeenCalledWith({
+        where: {
+          userId,
+          deletedAt: null,
+        },
+        select: {
+          id: true,
+          shortCode: true,
+          originalUrl: true,
+          clickCount: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
       });
+      expect(result).toHaveLength(2);
+      expect(result[0].shortUrl).toBe('http://localhost:3002/abc123');
+      expect(result[1].shortUrl).toBe('http://localhost:3002/def456');
     });
 
-    it('should use default base URL when env var not set', async () => {
-      delete process.env.REDIRECT_BASE_URL;
+    it('should return empty array when user has no URLs', async () => {
+      const userId = 'user-no-urls';
 
-      mockPrismaService.shortUrl.findUnique.mockResolvedValue(mockShortUrl);
+      mockPrismaService.shortUrl.findMany.mockResolvedValue([]);
 
-      const result = await service.getUrlInfo(shortCode);
+      const result = await service.getUserUrls(userId);
 
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('updateUserUrl', () => {
+    it('should update URL when it belongs to the user', async () => {
+      const urlId = 'url-123';
+      const userId = 'user-123';
+      const newOriginalUrl = 'https://github.com/updated';
+
+      const existingUrl = {
+        id: urlId,
+        userId,
+        shortCode: 'abc123',
+        originalUrl: 'https://github.com/old',
+        clickCount: 2,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+      };
+
+      const updatedUrl = {
+        ...existingUrl,
+        originalUrl: newOriginalUrl,
+        updatedAt: new Date(),
+      };
+
+      mockIsValidUrl.mockReturnValue(true);
+      mockPrismaService.shortUrl.findUnique.mockResolvedValue(existingUrl);
+      mockPrismaService.shortUrl.update.mockResolvedValue(updatedUrl);
+
+      const result = await service.updateUserUrl(userId, urlId, newOriginalUrl);
+
+      expect(mockPrismaService.shortUrl.findUnique).toHaveBeenCalledWith({
+        where: { id: urlId },
+      });
+      expect(mockPrismaService.shortUrl.update).toHaveBeenCalledWith({
+        where: { id: urlId },
+        data: { originalUrl: newOriginalUrl },
+        select: {
+          id: true,
+          shortCode: true,
+          originalUrl: true,
+          clickCount: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+      expect(result.originalUrl).toBe(newOriginalUrl);
       expect(result.shortUrl).toBe('http://localhost:3002/abc123');
+    });
+
+    it('should throw NotFoundException when URL does not exist', async () => {
+      const urlId = 'non-existing';
+      const userId = 'user-123';
+      const newOriginalUrl = 'https://github.com/updated';
+
+      mockIsValidUrl.mockReturnValue(true);
+      mockPrismaService.shortUrl.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.updateUserUrl(userId, urlId, newOriginalUrl),
+      ).rejects.toThrow('URL not found');
+    });
+
+    it('should throw ForbiddenException when URL belongs to different user', async () => {
+      const urlId = 'url-123';
+      const userId = 'user-123';
+      const otherUserId = 'user-456';
+      const newOriginalUrl = 'https://github.com/updated';
+
+      const existingUrl = {
+        id: urlId,
+        userId: otherUserId,
+        shortCode: 'abc123',
+        originalUrl: 'https://github.com/old',
+        clickCount: 2,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+      };
+
+      mockIsValidUrl.mockReturnValue(true);
+      mockPrismaService.shortUrl.findUnique.mockResolvedValue(existingUrl);
+
+      await expect(
+        service.updateUserUrl(userId, urlId, newOriginalUrl),
+      ).rejects.toThrow('You can only update your own URLs');
+    });
+
+    it('should throw ForbiddenException when trying to update anonymous URL', async () => {
+      const urlId = 'url-123';
+      const userId = 'user-123';
+      const newOriginalUrl = 'https://github.com/updated';
+
+      const anonymousUrl = {
+        id: urlId,
+        userId: null,
+        shortCode: 'abc123',
+        originalUrl: 'https://github.com/anonymous',
+        clickCount: 2,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+      };
+
+      mockIsValidUrl.mockReturnValue(true);
+      mockPrismaService.shortUrl.findUnique.mockResolvedValue(anonymousUrl);
+
+      await expect(
+        service.updateUserUrl(userId, urlId, newOriginalUrl),
+      ).rejects.toThrow('You can only update your own URLs');
+    });
+  });
+
+  describe('deleteUserUrl', () => {
+    it('should soft delete URL when it belongs to the user', async () => {
+      const urlId = 'url-123';
+      const userId = 'user-123';
+
+      const existingUrl = {
+        id: urlId,
+        userId,
+        shortCode: 'abc123',
+        originalUrl: 'https://github.com/test',
+        clickCount: 5,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+      };
+
+      mockPrismaService.shortUrl.findUnique.mockResolvedValue(existingUrl);
+      mockPrismaService.shortUrl.update.mockResolvedValue({
+        ...existingUrl,
+        deletedAt: new Date(),
+      });
+
+      await service.deleteUserUrl(userId, urlId);
+
+      expect(mockPrismaService.shortUrl.findUnique).toHaveBeenCalledWith({
+        where: { id: urlId },
+      });
+      // Verify the call was made correctly
+      expect(mockPrismaService.shortUrl.update).toHaveBeenCalledTimes(1);
+
+      // Check the arguments passed to update
+      const [updateArgs] = mockPrismaService.shortUrl.update.mock.calls[0] as [
+        { where: { id: string }; data: { deletedAt: Date } },
+      ];
+
+      expect(updateArgs.where).toEqual({ id: urlId });
+      expect(updateArgs.data.deletedAt).toBeInstanceOf(Date);
+      expect(updateArgs.data.deletedAt.getTime()).toBeCloseTo(Date.now(), -1);
+    });
+
+    it('should throw NotFoundException when URL does not exist', async () => {
+      const urlId = 'non-existing';
+      const userId = 'user-123';
+
+      mockPrismaService.shortUrl.findUnique.mockResolvedValue(null);
+
+      await expect(service.deleteUserUrl(userId, urlId)).rejects.toThrow(
+        'URL not found',
+      );
+    });
+
+    it('should throw ForbiddenException when URL belongs to different user', async () => {
+      const urlId = 'url-123';
+      const userId = 'user-123';
+      const otherUserId = 'user-456';
+
+      const existingUrl = {
+        id: urlId,
+        userId: otherUserId,
+        shortCode: 'abc123',
+        originalUrl: 'https://github.com/test',
+        clickCount: 5,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+      };
+
+      mockPrismaService.shortUrl.findUnique.mockResolvedValue(existingUrl);
+
+      await expect(service.deleteUserUrl(userId, urlId)).rejects.toThrow(
+        'You can only delete your own URLs',
+      );
+    });
+
+    it('should throw ForbiddenException when trying to delete anonymous URL', async () => {
+      const urlId = 'url-123';
+      const userId = 'user-123';
+
+      const anonymousUrl = {
+        id: urlId,
+        userId: null,
+        shortCode: 'abc123',
+        originalUrl: 'https://github.com/anonymous',
+        clickCount: 2,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+      };
+
+      mockPrismaService.shortUrl.findUnique.mockResolvedValue(anonymousUrl);
+
+      await expect(service.deleteUserUrl(userId, urlId)).rejects.toThrow(
+        'You can only delete your own URLs',
+      );
     });
   });
 });

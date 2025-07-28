@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '@app/prisma';
 import {
@@ -13,7 +14,7 @@ import {
 export class UrlShortenerServiceService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async shortenUrl(originalUrl: string) {
+  async shortenUrl(originalUrl: string, userId?: string) {
     if (!isValidUrl(originalUrl)) {
       throw new BadRequestException('Invalid URL');
     }
@@ -24,6 +25,7 @@ export class UrlShortenerServiceService {
       data: {
         shortCode,
         originalUrl,
+        userId: userId || null, // Associate with user if authenticated, null if anonymous
       },
     });
 
@@ -68,6 +70,101 @@ export class UrlShortenerServiceService {
       updatedAt: shortUrl.updatedAt,
       shortUrl: `${process.env.REDIRECT_BASE_URL || 'http://localhost:3002'}/${shortUrl.shortCode}`,
     };
+  }
+
+  async getUserUrls(userId: string) {
+    const userUrls = await this.prisma.shortUrl.findMany({
+      where: {
+        userId,
+        deletedAt: null, // Only non-deleted URLs
+      },
+      select: {
+        id: true,
+        shortCode: true,
+        originalUrl: true,
+        clickCount: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: {
+        createdAt: 'desc', // Most recent first
+      },
+    });
+
+    return userUrls.map((url) => ({
+      id: url.id,
+      shortCode: url.shortCode,
+      originalUrl: url.originalUrl,
+      shortUrl: `${process.env.REDIRECT_BASE_URL || 'http://localhost:3002'}/${url.shortCode}`,
+      clickCount: url.clickCount,
+      createdAt: url.createdAt,
+      updatedAt: url.updatedAt,
+    }));
+  }
+
+  async updateUserUrl(userId: string, urlId: string, newOriginalUrl: string) {
+    if (!isValidUrl(newOriginalUrl)) {
+      throw new BadRequestException('Invalid URL');
+    }
+
+    // Check if URL belongs to user and exists
+    const existingUrl = await this.prisma.shortUrl.findUnique({
+      where: { id: urlId },
+    });
+
+    if (!existingUrl || existingUrl.deletedAt) {
+      throw new NotFoundException('URL not found');
+    }
+
+    if (existingUrl.userId !== userId) {
+      throw new ForbiddenException('You can only update your own URLs');
+    }
+
+    const updatedUrl = await this.prisma.shortUrl.update({
+      where: { id: urlId },
+      data: { originalUrl: newOriginalUrl },
+      select: {
+        id: true,
+        shortCode: true,
+        originalUrl: true,
+        clickCount: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return {
+      id: updatedUrl.id,
+      shortCode: updatedUrl.shortCode,
+      originalUrl: updatedUrl.originalUrl,
+      shortUrl: `${process.env.REDIRECT_BASE_URL || 'http://localhost:3002'}/${updatedUrl.shortCode}`,
+      clickCount: updatedUrl.clickCount,
+      createdAt: updatedUrl.createdAt,
+      updatedAt: updatedUrl.updatedAt,
+    };
+  }
+
+  async deleteUserUrl(userId: string, urlId: string) {
+    // Check if URL belongs to user and exists
+    const existingUrl = await this.prisma.shortUrl.findUnique({
+      where: { id: urlId },
+    });
+
+    if (!existingUrl || existingUrl.deletedAt) {
+      throw new NotFoundException('URL not found');
+    }
+
+    if (existingUrl.userId !== userId) {
+      throw new ForbiddenException('You can only delete your own URLs');
+    }
+
+    // Soft delete
+    await this.prisma.shortUrl.update({
+      where: { id: urlId },
+      data: { deletedAt: new Date() },
+    });
+
+    return { message: 'URL deleted successfully' };
   }
 
   private async generateUniqueCode(): Promise<string> {

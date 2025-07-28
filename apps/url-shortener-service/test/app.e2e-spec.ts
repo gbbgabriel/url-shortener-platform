@@ -74,7 +74,7 @@ describe('UrlShortenerServiceController (e2e)', () => {
           const body = res.body as HealthResponse;
           expect(body.status).toBe('OK');
           expect(body.service).toBe('url-shortener-service');
-          expect(body.version).toBe('0.1.0');
+          expect(body.version).toBe('0.3.0');
           expect(body.timestamp).toBeDefined();
         });
     });

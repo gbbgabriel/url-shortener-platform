@@ -7,10 +7,197 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-### 🎯 Next Release (0.3.0)
+### 🎯 Next Release (0.4.0)
 
-- **Objetivo**: URLs por Usuário + Dashboard Pessoal
-- **Escopo**: CRUD de URLs, organização por usuário, configurações avançadas
+- **Objetivo**: Analytics Avançado + Observabilidade
+- **Escopo**: Métricas detalhadas, geolocalização, dashboards visuais, logging estruturado
+
+---
+
+## [0.3.0] - 2025-07-28
+
+**🎯 Milestone**: User URL Management + Personal Dashboard
+
+### ✨ Added
+
+#### **🔗 User-Owned URL Management (NEW)**
+
+- **Personal URL Dashboard**: Complete CRUD operations for authenticated users
+- **Get My URLs**: `GET /my-urls` - List all URLs owned by authenticated user
+- **Update URL**: `PUT /my-urls/{id}` - Edit originalUrl of existing user URLs
+- **Delete URL**: `DELETE /my-urls/{id}` - Soft delete URLs with user ownership validation
+- **Ownership Validation**: Security checks ensuring users can only manage their own URLs
+- **Soft Delete Implementation**: URLs marked as deleted instead of physical removal
+- **Enhanced Auth Integration**: JWT authentication enforced for all user URL operations
+
+#### **🛡️ Enhanced Security & Validation**
+
+- **User Context**: URLs now associated with authenticated users
+- **Permission Guards**: Comprehensive authorization checks for URL ownership
+- **JWT Gateway Integration**: Fixed JWT authentication flow through KrakenD gateway
+- **Input Validation**: Enhanced DTO validation for URL update operations
+- **Error Handling**: Detailed error responses for unauthorized access attempts
+
+#### **🌐 Gateway Enhancements**
+
+- **New Authenticated Routes**: Three new endpoints with JWT validation via gateway
+- **Rate Limiting**: Configured rate limiting for user URL management endpoints
+- **Header Forwarding**: Fixed `Authorization` header forwarding from gateway to services
+- **No-Op Encoding**: Transparent proxy configuration for authenticated requests
+- **CORS Enhancement**: Updated CORS configuration for new authenticated endpoints
+
+### 🏛️ Technical Architecture Enhancements
+
+#### **🔄 Enhanced Microservices Flow**
+
+```mermaid
+flowchart TD
+    Client[👤 Authenticated User] --> Gateway[⚡ KrakenD :8080]
+    Gateway -->|🔐 JWT Validation| URLService[🎯 URL Service :3002]
+    Gateway -->|🔐 Auth Headers| Identity[🔐 Identity Service :3001]
+    URLService --> DB[(🐘 PostgreSQL)]
+    URLService --> Cache[(⚡ Redis)]
+
+    subgraph "New User URL Management"
+        GetURLs[GET /my-urls]
+        UpdateURL[PUT /my-urls/{id}]
+        DeleteURL[DELETE /my-urls/{id}]
+    end
+```
+
+#### **📊 Enhanced Database Operations**
+
+- **User Association**: URLs now properly linked to authenticated users
+- **Soft Delete Queries**: Database queries filter out deleted URLs automatically
+- **Ownership Validation**: Database-level checks for user URL associations
+- **Timestamp Management**: Automatic `deletedAt` timestamp for soft deletes
+
+### 🚀 API Enhancements
+
+#### **🔗 New User URL Management Endpoints**
+
+```http
+GET    /my-urls        # List user's URLs (authenticated)
+PUT    /my-urls/{id}   # Update user's URL (authenticated)
+DELETE /my-urls/{id}   # Soft delete user's URL (authenticated)
+```
+
+#### **📊 Enhanced Response Formats**
+
+- **User URL Listing**: Paginated response with user's URLs and metadata
+- **Update Responses**: Confirmation of URL updates with new data
+- **Delete Responses**: Soft delete confirmation with operation status
+- **Error Responses**: Detailed ownership and permission error messages
+
+### 🧪 Comprehensive Testing Updates
+
+#### **🧪 Test Suite Enhancements**
+
+- **Controller Tests**: Expanded URL shortener controller tests for new endpoints
+- **Service Tests**: Enhanced service layer tests with user context
+- **Mock Integration**: Improved mocking for user authentication scenarios
+- **Edge Case Coverage**: Tests for ownership validation and authorization failures
+- **Fixed Timing Issues**: Resolved Date-based test failures with proper mocking
+
+#### **✅ Quality Assurance**
+
+- **All Tests Passing**: 78/78 tests passing after fixes
+- **ESLint Clean**: Zero linting errors with TypeScript strict mode
+- **Type Safety**: Enhanced TypeScript validation for user context operations
+
+### 🔧 DevOps & Infrastructure
+
+#### **🐳 Docker Environment**
+
+- **Container Rebuild**: Full rebuild process to ensure clean dependency installation
+- **Node Modules**: Fixed node_modules installation in production containers
+- **Dockerfile Optimization**: Removed `--only=production` to include necessary dev dependencies
+- **Health Monitoring**: All containers healthy with proper dependency management
+
+#### **📚 Documentation Updates**
+
+- **Documentation Hub**: Updated with new v0.3.0 endpoints
+- **Gateway Configuration**: Added new authenticated routes to docs
+- **Version Badges**: Updated release badges to reflect v0.3.0
+- **API Examples**: Added curl examples for new user URL management endpoints
+
+### 🛡️ Security Enhancements
+
+#### **🔐 JWT Authentication Fixes**
+
+- **Gateway Configuration**: Fixed JWT token forwarding through KrakenD gateway
+- **Input Headers**: Configured `input_headers: ["*"]` for transparent authentication
+- **Output Encoding**: Set `output_encoding: "no-op"` for proper token handling
+- **Authorization Flow**: End-to-end JWT authentication working correctly
+
+#### **🌐 Authorization Implementation**
+
+- **User Context**: Proper user extraction from JWT tokens in services
+- **Ownership Checks**: Database-level validation of URL ownership
+- **Permission Guards**: Service-level authorization before URL operations
+- **Error Handling**: Proper 403 Forbidden responses for unauthorized access
+
+### 🎯 Business Logic Enhancements
+
+#### **🔗 URL Lifecycle Management**
+
+- **User Association**: URLs created by authenticated users are properly owned
+- **Anonymous Support**: Backward compatibility with anonymous URL creation
+- **Soft Delete Logic**: URLs marked as deleted but preserved for data integrity
+- **Update Validation**: Only original URL can be updated, preserving short codes
+
+#### **📊 User Experience**
+
+- **Personal Dashboard**: Users can view all their created URLs
+- **URL Management**: Edit and delete capabilities for user-owned URLs
+- **Ownership Clarity**: Clear error messages when accessing others' URLs
+- **Data Persistence**: Soft deletes allow for future recovery features
+
+### 📈 Performance & Reliability
+
+#### **⚡ Optimizations**
+
+- **Database Queries**: Efficient filtering of deleted URLs in user listings
+- **JWT Validation**: Gateway-level authentication reduces service load
+- **Soft Delete Performance**: Indexed queries on deletedAt field
+- **Authorization Caching**: User context extraction optimized
+
+#### **🛡️ Reliability Features**
+
+- **Graceful Degradation**: Anonymous URLs continue to work alongside user URLs
+- **Error Recovery**: Comprehensive error handling for authorization failures
+- **Data Integrity**: Soft deletes preserve data while hiding from users
+- **Transaction Safety**: Database operations wrapped in proper error handling
+
+### 🚨 Breaking Changes
+
+#### **⚠️ Minor Breaking Changes**
+
+- **Authentication Required**: New endpoints require valid JWT tokens
+- **User Context**: Some operations now require authenticated user context
+- **Error Responses**: Enhanced error response format for authorization failures
+
+#### **✅ Backward Compatibility**
+
+- **Anonymous URLs**: All existing anonymous URLs continue to work
+- **Public Endpoints**: Original shortening and redirect endpoints unchanged
+- **API Contracts**: Existing response formats maintained
+- **Database Schema**: Backward compatible with existing URL data
+
+### 🏆 Release Summary
+
+**Release 0.3.0** successfully implements user-owned URL management while maintaining backward compatibility with anonymous URL creation. The addition of personal URL dashboards and comprehensive CRUD operations transforms this from a simple URL shortener into a full-featured personal URL management platform.
+
+**Key Achievements:**
+
+- **Complete User URL Management**: CRUD operations for authenticated users
+- **Security First**: Proper JWT authentication and authorization
+- **Gateway Integration**: Fixed authentication flow through KrakenD
+- **Data Integrity**: Soft delete implementation preserves data
+- **Quality Assurance**: All 78 tests passing with comprehensive coverage
+- **Backward Compatibility**: Anonymous URLs continue to work seamlessly
+
+**🎯 Next Milestone**: Release 0.4.0 will focus on advanced analytics, user dashboards, and observability features.
 
 ---
 
@@ -430,24 +617,28 @@ flowchart TD
 ### **🔑 Key Implementation Details (v0.2.0)**
 
 #### **🛡️ JWT Authentication Architecture**
+
 - **Passport JWT Strategy**: `apps/identity-service/src/auth/strategies/jwt.strategy.ts`
 - **JWT Auth Guard**: `apps/identity-service/src/auth/guards/jwt-auth.guard.ts`
 - **Current User Decorator**: `@CurrentUser()` for dependency injection
 - **Bearer Token Format**: Standard `Authorization: Bearer <token>` header
 
 #### **🔐 Security Implementation**
+
 - **Password Hashing**: bcryptjs with automatic salt generation
 - **JWT Secret**: Environment-configurable with 24h default expiration
 - **Input Validation**: class-validator DTOs with strict email/password rules
 - **Rate Limiting**: Gateway-level protection (10/min register, 30/min login)
 
 #### **🏗️ Microservice Architecture**
+
 - **Identity Service**: Dedicated authentication microservice (port 3001)
-- **URL Service**: Core business logic (port 3002) 
+- **URL Service**: Core business logic (port 3002)
 - **API Gateway**: KrakenD routing with JWT validation (port 8080)
 - **Documentation Hub**: Nginx-powered central documentation (port 80)
 
 #### **📊 Database Schema Evolution**
+
 ```sql
 -- User table with relationships
 model User {

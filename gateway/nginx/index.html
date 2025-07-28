@@ -259,7 +259,7 @@
     <div class="header">
       <h1>🚀 URL Shortener Platform</h1>
       <p>Documentação Completa da API - Arquitetura de Microserviços</p>
-      <span class="badge">Release 0.2.0</span>
+      <span class="badge">Release 0.3.0</span>
     </div>
 
     <div class="services">
@@ -290,7 +290,8 @@
           <div class="service-title">🔗 URL Shortener Service</div>
           <div class="service-description">
             Core do encurtamento de URLs, redirecionamento e analytics.
-            Gera códigos únicos de 6 caracteres e rastreia cliques.
+            Gera códigos únicos de 6 caracteres, rastreia cliques e permite gerenciamento
+            personalizado de URLs para usuários autenticados.
           </div>
           <div class="service-info">
             <span>Porta:</span>
@@ -320,6 +321,9 @@
           <div class="endpoint">POST /auth/register</div>
           <div class="endpoint">GET /auth/me</div>
           <div class="endpoint">POST /shorten</div>
+          <div class="endpoint">GET /my-urls</div>
+          <div class="endpoint">PUT /my-urls/{id}</div>
+          <div class="endpoint">DELETE /my-urls/{id}</div>
           <div class="endpoint">GET /info/{code}</div>
           <div class="endpoint">GET /{shortCode}</div>
         </div>

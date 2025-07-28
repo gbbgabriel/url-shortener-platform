@@ -48,8 +48,11 @@ async function bootstrap() {
     // Configurar Swagger/OpenAPI de forma PADRÃO
     const config = new DocumentBuilder()
       .setTitle('URL Shortener API')
-      .setDescription('API para encurtamento de URLs - Release 0.1.0')
-      .setVersion('0.1.0')
+      .setDescription(
+        'API para encurtamento de URLs - Release 0.3.0: User URL Management',
+      )
+      .setVersion('0.3.0')
+      .addBearerAuth()
       .build();
 
     const document = SwaggerModule.createDocument(app, config);
