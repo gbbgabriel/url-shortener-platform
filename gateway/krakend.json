@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.krakend.io/schema/v3.json",
   "version": 3,
-  "name": "URL Shortener Gateway - Release 0.1.0",
+  "name": "URL Shortener Gateway - Release 0.2.0",
   "port": 8080,
   "host": ["0.0.0.0"],
   "timeout": "30s",
@@ -21,6 +21,63 @@
           "host": ["http://url-shortener-service:3002"]
         }
       ]
+    },
+    {
+      "endpoint": "/auth/login",
+      "method": "POST",
+      "timeout": "10s",
+      "backend": [
+        {
+          "url_pattern": "/auth/login",
+          "method": "POST",
+          "host": ["http://identity-service:3001"]
+        }
+      ],
+      "extra_config": {
+        "security/rate-limit": {
+          "max_rate": 30,
+          "capacity": 30,
+          "period": "1m"
+        }
+      }
+    },
+    {
+      "endpoint": "/auth/register",
+      "method": "POST",
+      "timeout": "10s",
+      "backend": [
+        {
+          "url_pattern": "/auth/register",
+          "method": "POST",
+          "host": ["http://identity-service:3001"]
+        }
+      ],
+      "extra_config": {
+        "security/rate-limit": {
+          "max_rate": 10,
+          "capacity": 10,
+          "period": "1m"
+        }
+      }
+    },
+    {
+      "endpoint": "/auth/me",
+      "method": "GET",
+      "timeout": "5s",
+      "backend": [
+        {
+          "url_pattern": "/auth/me",
+          "method": "GET",
+          "host": ["http://identity-service:3001"]
+        }
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "HS256",
+          "key": "your-jwt-secret-key",
+          "disable_jwk_security": true
+        }
+      }
     },
     {
       "endpoint": "/shorten",
@@ -70,14 +127,74 @@
           "capacity": 100,
           "period": "1m"
         }
-              }
       }
-    ],
+    },
+    {
+      "endpoint": "/{shortCode}",
+      "method": "GET",
+      "timeout": "5s",
+      "output_encoding": "no-op",
+      "backend": [
+        {
+          "url_pattern": "/{shortCode}",
+          "method": "GET",
+          "encoding": "no-op",
+          "host": ["http://url-shortener-service:3002"]
+        }
+      ],
+      "extra_config": {
+        "security/rate-limit": {
+          "max_rate": 200,
+          "capacity": 200,
+          "period": "1m"
+        }
+      }
+    },
+    {
+      "endpoint": "/docs",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "backend": [
+        {
+          "url_pattern": "/",
+          "method": "GET",
+          "encoding": "no-op",
+          "host": ["http://docs-server:80"]
+        }
+      ]
+    },
+    {
+      "endpoint": "/docs/identity",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "backend": [
+        {
+          "url_pattern": "/api-json",
+          "method": "GET",
+          "encoding": "no-op",
+          "host": ["http://identity-service:3001"]
+        }
+      ]
+    },
+    {
+      "endpoint": "/docs/url-shortener", 
+      "method": "GET",
+      "output_encoding": "no-op",
+      "backend": [
+        {
+          "url_pattern": "/api-json",
+          "method": "GET",
+          "encoding": "no-op",
+          "host": ["http://url-shortener-service:3002"]
+        }
+      ]
+    }
+  ],
 
   "extra_config": {
     "security/cors": {
       "allow_origins": ["*"],
-      "allow_methods": ["GET", "POST"],
+      "allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       "allow_headers": ["Content-Type", "Authorization"],
       "expose_headers": ["Content-Length"],
       "max_age": "12h",

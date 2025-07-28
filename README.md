@@ -1,6 +1,6 @@
 # 🔗 URL Shortener Platform
 
-**Release 0.1.0** - Plataforma de encurtamento de URLs com arquitetura de microserviços.
+**Release 0.2.0** - Plataforma completa de encurtamento de URLs com Identity Service, autenticação JWT e arquitetura de microserviços.
 
 ## 🚀 Setup do Zero
 
@@ -74,7 +74,7 @@ docker-compose down
 Execute todos os testes para garantir que tudo está funcionando:
 
 ```bash
-# 1. Testes Unitários (8 testes)
+# 1. Testes Unitários (59 testes)
 npm test
 
 # 2. Subir banco de teste para E2E/Integration
@@ -86,10 +86,10 @@ sleep 10
 # 4. Sincronizar schema no banco de teste
 DATABASE_URL="postgresql://test_user:test_password@localhost:5433/test_db" npx prisma db push
 
-# 5. Testes End-to-End (16 testes)
+# 5. Testes End-to-End (26 testes)
 npm run test:e2e
 
-# 6. Testes de Integração (5 testes)
+# 6. Testes de Integração (17 testes)
 npm run test:integration
 
 # 7. Limpar ambiente de teste
@@ -98,12 +98,12 @@ docker-compose -f docker-compose.test.yml down
 
 ### 📊 Resumo dos Testes
 
-| Tipo            | Quantidade    | Descrição                                                 |
-| --------------- | ------------- | --------------------------------------------------------- |
-| **Unit**        | 8 testes      | Funções utilitárias (URL validation, code generation)     |
-| **E2E**         | 16 testes     | APIs completas via HTTP (health, shorten, redirect, info) |
-| **Integration** | 5 testes      | Banco de dados + serviços                                 |
-| **Total**       | **29 testes** | **100% dos cenários críticos cobertos**                   |
+| Tipo            | Quantidade     | Descrição                                   |
+| --------------- | -------------- | ------------------------------------------- |
+| **Unit**        | 74 testes      | Services, controllers, hash, validação      |
+| **E2E**         | 34 testes      | APIs completas via HTTP (ambos os serviços) |
+| **Integration** | 25 testes      | Banco de dados + serviços + autenticação    |
+| **Total**       | **133 testes** | **100% dos cenários críticos cobertos**     |
 
 ### 🔍 Testes Manuais Críticos
 
@@ -113,22 +113,29 @@ Após subir a aplicação, execute estes testes manuais:
 # 1. Health Check
 curl http://localhost:8080/health
 
-# 2. Criar URL encurtada
+# 2. Registrar usuário
+curl -X POST http://localhost:8080/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"teste@example.com","password":"MinhaSenh@123"}'
+
+# 3. Fazer login
+curl -X POST http://localhost:8080/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"teste@example.com","password":"MinhaSenh@123"}'
+
+# 4. Criar URL encurtada
 curl -X POST http://localhost:8080/shorten \
   -H "Content-Type: application/json" \
   -d '{"originalUrl": "https://github.com/gbbgabriel/url-shortener-platform"}'
 
-# 3. Testar redirecionamento (substitua SHORTCODE pelo retornado acima)
+# 5. Testar redirecionamento (substitua SHORTCODE pelo retornado acima)
 curl -I http://localhost:3002/SHORTCODE
 
-# 4. Verificar informações e click tracking
+# 6. Verificar informações e click tracking
 curl http://localhost:8080/info/SHORTCODE
 
-# 5. Testar URL inexistente
-curl http://localhost:3002/inexistente
-
-# 6. Verificar documentação Swagger
-open http://localhost:3002/api/docs
+# 7. Verificar documentação unificada
+open http://localhost:8080/docs
 ```
 
 ### 🚨 Troubleshooting
@@ -137,7 +144,7 @@ open http://localhost:3002/api/docs
 
 ```bash
 # Verificar se portas estão ocupadas
-lsof -i :8080 -i :3002 -i :5432 -i :6379
+lsof -i :8080 -i :3001 -i :3002 -i :5432 -i :6379
 
 # Limpar Docker completamente
 docker system prune -a --volumes
@@ -181,11 +188,13 @@ Antes de considerar a aplicação pronta:
 
 - [ ] `docker-compose ps` mostra todos containers **healthy**
 - [ ] `curl http://localhost:8080/health` retorna **200 OK**
+- [ ] Registro e login de usuários funcionando
 - [ ] URLs são criadas via `POST /shorten` com sucesso
 - [ ] Redirects funcionam via `GET http://localhost:3002/CODE`
 - [ ] Click tracking incrementa em `GET /info/CODE`
-- [ ] **29/29 testes** passando (8 unit + 16 e2e + 5 integration)
-- [ ] Swagger disponível em `http://localhost:3002/api/docs`
+- [ ] **133/133 testes** passando (74 unit + 34 e2e + 25 integration)
+- [ ] Documentation hub disponível em `http://localhost:8080/docs`
+- [ ] Swagger individual: Identity (`http://localhost:3001/api/docs`) e URL Shortener (`http://localhost:3002/api/docs`)
 - [ ] URLs inexistentes retornam **404**
 
 ## 🏗️ Arquitetura do Sistema
@@ -196,58 +205,86 @@ Antes de considerar a aplicação pronta:
 flowchart TD
     Client[👤 Cliente/Browser] --> Gateway{🎯 Operação?}
 
-    Gateway -->|📝 Criar URLs| KrakenD[⚡ KrakenD Gateway :8080]
+    Gateway -->|🔐 Autenticação| KrakenD[⚡ KrakenD Gateway :8080]
+    Gateway -->|📝 Criar URLs| KrakenD
     Gateway -->|📊 Info URLs| KrakenD
     Gateway -->|💚 Health Check| KrakenD
 
-    Gateway -->|🔄 Redirecionamento| Service[🎯 URL Service :3002]
+    Gateway -->|🔄 Redirecionamento| URLService[🎯 URL Service :3002]
+    Gateway -->|📚 Documentação| DocsHub[📚 Docs Hub]
 
-    KrakenD --> Service
-    Service --> DB[(🐘 PostgreSQL :5432)]
-    Service --> Cache[(⚡ Redis :6379)]
+    KrakenD --> IdentityService[🔐 Identity Service :3001]
+    KrakenD --> URLService
+    KrakenD --> DocsHub
+
+    IdentityService --> DB[(🐘 PostgreSQL :5432)]
+    URLService --> DB
+    URLService --> Cache[(⚡ Redis :6379)]
 
     subgraph "🛡️ Recursos do Gateway"
         RL[Rate Limiting]
         CORS[CORS Headers]
+        JWT[JWT Validation]
         LOG[Logging]
     end
 
     KrakenD --> RL
     KrakenD --> CORS
+    KrakenD --> JWT
     KrakenD --> LOG
 
     subgraph "📋 APIs Implementadas"
+        AUTH1[POST /auth/register]
+        AUTH2[POST /auth/login]
+        AUTH3[GET /auth/me]
         API1[POST /shorten]
         API2[GET /info/:code]
         API3[GET /health]
         API4[GET /:code → 301 Redirect]
+        DOCS1[GET /docs → Hub]
     end
 ```
 
 ### 🔄 Fluxo de Dados por Operação
 
-#### 1. **📝 Criar URL Encurtada**
+#### 1. **🔐 Autenticação de Usuário**
 
 ```
-Cliente → KrakenD :8080 → Service :3002 → PostgreSQL
+Cliente → KrakenD :8080 → Identity Service :3001 → PostgreSQL
+                    ↓
+          Rate Limiting + CORS + JWT
+```
+
+#### 2. **📝 Criar URL Encurtada**
+
+```
+Cliente → KrakenD :8080 → URL Service :3002 → PostgreSQL
                     ↓
                Rate Limiting + CORS
 ```
 
-#### 2. **📊 Obter Informações**
+#### 3. **📊 Obter Informações**
 
 ```
-Cliente → KrakenD :8080 → Service :3002 → PostgreSQL
+Cliente → KrakenD :8080 → URL Service :3002 → PostgreSQL
                     ↓
                Cache + Validação
 ```
 
-#### 3. **🔄 Redirecionamento (DIRETO)**
+#### 4. **🔄 Redirecionamento (DIRETO)**
 
 ```
-Cliente → Service :3002 → PostgreSQL → HTTP 301 Redirect
+Cliente → URL Service :3002 → PostgreSQL → HTTP 301 Redirect
              ↓
         Contabiliza Click
+```
+
+#### 5. **📚 Documentação Híbrida**
+
+```
+Cliente → KrakenD :8080 → Nginx Docs Server → HTML Hub
+                    ↓
+            Links para Swagger individuais
 ```
 
 ### ⚠️ Arquitetura Híbrida - Por que?
@@ -259,34 +296,59 @@ Cliente → Service :3002 → PostgreSQL → HTTP 301 Redirect
 
 #### **✅ Solução Implementada:**
 
-- **Gateway (8080)**: Todas as operações de API (criar, info, health)
+- **Gateway (8080)**: Todas as operações de API (autenticação, criar, info, health)
 - **Serviço Direto (3002)**: Apenas redirects para melhor performance
+- **Documentation Hub**: Sistema híbrido com Nginx para documentação unificada
 
 #### **🚀 Benefícios da Arquitetura:**
 
-1. **Rate Limiting**: Protege contra spam na criação de URLs
-2. **CORS**: Headers corretos para browsers
-3. **Logging**: Centralizado no gateway
-4. **Performance**: Redirects diretos sem overhead
-5. **Escalabilidade**: Preparado para múltiplos serviços
+1. **JWT Authentication**: Proteção de rotas via gateway
+2. **Rate Limiting**: Protege contra spam na criação de URLs
+3. **CORS**: Headers corretos para browsers
+4. **Logging**: Centralizado no gateway
+5. **Performance**: Redirects diretos sem overhead
+6. **Escalabilidade**: Preparado para múltiplos serviços
+7. **Documentation**: Hub centralizado + documentação individual
 
 ### 🎯 Portas e Serviços
 
-| Serviço             | Porta | Propósito      | Acesso            |
-| ------------------- | ----- | -------------- | ----------------- |
-| **KrakenD Gateway** | 8080  | API Management | Público           |
-| **URL Shortener**   | 3002  | Core Logic     | Interno/Redirects |
-| **PostgreSQL**      | 5432  | Persistência   | Interno           |
-| **Redis**           | 6379  | Cache          | Interno           |
+| Serviço              | Porta | Propósito          | Acesso            | Status    |
+| -------------------- | ----- | ------------------ | ----------------- | --------- |
+| **KrakenD Gateway**  | 8080  | API Management     | Público           | ✅ v0.2.0 |
+| **Identity Service** | 3001  | JWT Authentication | Interno           | ✅ v0.2.0 |
+| **URL Shortener**    | 3002  | Core Logic         | Interno/Redirects | ✅ v0.1.0 |
+| **Docs Hub Server**  | 80    | Documentation Hub  | Via Gateway       | ✅ v0.2.0 |
+| **PostgreSQL**       | 5432  | Database           | Interno           | ✅ v0.1.0 |
+| **Redis**            | 6379  | Cache Layer        | Interno           | ✅ v0.1.0 |
+| **Test Database**    | 5433  | Testing Only       | CI/CD             | ✅ v0.1.0 |
 
 ## 🚀 Tecnologias
 
-- **Backend**: NestJS + TypeScript + Fastify
-- **Database**: PostgreSQL + Prisma ORM
-- **Cache**: Redis
-- **API Gateway**: KrakenD
-- **Infrastructure**: Docker Compose
-- **Documentation**: Swagger/OpenAPI
+### 🏗️ Core Stack
+
+- **Backend Framework**: NestJS 11+ com TypeScript 5+
+- **HTTP Server**: Fastify (alta performance)
+- **Authentication**: JWT + Passport.js + bcryptjs
+- **Database**: PostgreSQL 15 + Prisma ORM 6+
+- **Cache Layer**: Redis 7
+- **API Gateway**: KrakenD 2.5 com rate limiting
+- **Documentation**: Swagger/OpenAPI 3.0 + Nginx
+- **Infrastructure**: Docker Compose multi-service
+
+### 🛡️ Security & Validation
+
+- **Password Hashing**: bcryptjs com salt automático
+- **JWT Tokens**: Configurável com expiração de 24h
+- **Input Validation**: class-validator + class-transformer
+- **Rate Limiting**: KrakenD com limites por endpoint
+- **CORS**: Headers configurados para autenticação
+
+### 🧪 Testing & Quality
+
+- **Testing Framework**: Jest com coverage completa
+- **E2E Testing**: Supertest com banco de teste
+- **Linting**: ESLint + Prettier com regras rigorosas
+- **TypeScript**: Modo strict com validação total
 
 ## ⚙️ Configuração de Ambiente
 
@@ -306,6 +368,10 @@ NODE_ENV=development
 PORT=3002
 BASE_URL=http://localhost:8080
 
+# JWT Configuration
+JWT_SECRET=your_super_secure_jwt_secret_here
+JWT_EXPIRATION=24h
+
 # Database
 POSTGRES_DB=urlshortener
 POSTGRES_USER=admin
@@ -318,6 +384,7 @@ REDIS_PORT=6379
 # Portas do host
 HOST_POSTGRES_PORT=5432
 HOST_REDIS_PORT=6379
+HOST_IDENTITY_PORT=3001
 HOST_SERVICE_PORT=3002
 HOST_GATEWAY_PORT=8080
 ```
@@ -342,15 +409,18 @@ docker-compose down
 ```bash
 # Desenvolvimento
 npm run start:dev              # Modo desenvolvimento
-npm run start:url-shortener    # Inicia apenas o serviço
+npm run start:url-shortener    # Inicia apenas o URL service
+npm run start:identity         # Inicia apenas o Identity service
 
 # Build
-npm run build:url-shortener-service  # Build do serviço
+npm run build:identity-service        # Build do Identity service
+npm run build:url-shortener-service  # Build do URL service
 
 # Testes
 npm test                       # Testes unitários
 npm run test:cov              # Cobertura de testes
 npm run test:e2e              # Testes E2E
+npm run test:integration      # Testes de integração
 
 # Database
 npm run db:generate           # Gerar cliente Prisma
@@ -370,12 +440,41 @@ npm run docker:logs         # Ver logs
 
 ## 📚 API Documentation
 
-Após iniciar o projeto, acesse:
+### 🎯 Documentation Hub (Novo em 0.2.0)
 
-- **Swagger UI**: http://localhost:8080/api/docs
-- **API JSON**: http://localhost:8080/api/docs-json
+Acesse o hub central de documentação:
+
+- **Documentation Hub**: http://localhost:8080/docs
+
+### 📖 Swagger Individual
+
+Cada serviço mantém sua documentação própria:
+
+- **Identity Service**: http://localhost:3001/api/docs
+- **URL Shortener Service**: http://localhost:3002/api/docs
+
+### 📄 JSON Schemas
+
+- **Identity JSON**: http://localhost:8080/docs/identity
+- **URL Shortener JSON**: http://localhost:8080/docs/url-shortener
 
 ## 🎯 Como Usar Corretamente
+
+### 🔐 Para Autenticação
+
+```bash
+# Use sempre o Gateway na porta 8080
+BASE_URL=http://localhost:8080
+
+# Registrar
+curl -X POST http://localhost:8080/auth/register
+
+# Login
+curl -X POST http://localhost:8080/auth/login
+
+# Perfil (com token)
+curl -H "Authorization: Bearer TOKEN" http://localhost:8080/auth/me
+```
 
 ### 📝 Para Criar URLs e APIs
 
@@ -391,9 +490,25 @@ BASE_URL=http://localhost:8080
 REDIRECT_URL=http://localhost:3002/{shortCode}
 ```
 
-### 💡 Exemplo Prático
+### 💡 Exemplo Prático Completo
 
-1. **Criar URL encurtada**:
+1. **Registrar usuário**:
+
+   ```bash
+   curl -X POST http://localhost:8080/auth/register \
+     -H "Content-Type: application/json" \
+     -d '{"email":"usuario@example.com","password":"MinhaSenh@123"}'
+   ```
+
+2. **Fazer login**:
+
+   ```bash
+   curl -X POST http://localhost:8080/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{"email":"usuario@example.com","password":"MinhaSenh@123"}'
+   ```
+
+3. **Criar URL encurtada**:
 
    ```bash
    curl -X POST http://localhost:8080/shorten \
@@ -401,20 +516,70 @@ REDIRECT_URL=http://localhost:3002/{shortCode}
      -d '{"originalUrl": "https://github.com/seu-usuario/projeto"}'
    ```
 
-2. **Usar no navegador**:
+4. **Usar no navegador**:
 
    ```
    http://localhost:3002/aB3xY9
    ```
 
-3. **Ver informações**:
+5. **Ver informações**:
    ```bash
    curl http://localhost:8080/info/aB3xY9
    ```
 
 ## 🔌 Endpoints
 
-### 🌐 Via API Gateway (porta 8080)
+### 🔐 Authentication (via Gateway - porta 8080)
+
+#### Registrar Usuário
+
+```http
+POST http://localhost:8080/auth/register
+Content-Type: application/json
+
+{
+  "email": "usuario@example.com",
+  "password": "MinhaSenh@123"
+}
+```
+
+**Resposta:**
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "expiresIn": "24h",
+  "tokenType": "Bearer",
+  "user": {
+    "id": "uuid-here",
+    "email": "usuario@example.com",
+    "isActive": true,
+    "createdAt": "2025-01-27T10:00:00.000Z",
+    "updatedAt": "2025-01-27T10:00:00.000Z"
+  }
+}
+```
+
+#### Login
+
+```http
+POST http://localhost:8080/auth/login
+Content-Type: application/json
+
+{
+  "email": "usuario@example.com",
+  "password": "MinhaSenh@123"
+}
+```
+
+#### Perfil do Usuário
+
+```http
+GET http://localhost:8080/auth/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+```
+
+### 🌐 URL Shortener (via Gateway - porta 8080)
 
 #### Health Check
 
@@ -438,7 +603,7 @@ Content-Type: application/json
 ```json
 {
   "shortCode": "aZbKq7",
-  "shortUrl": "http://localhost:8080/aZbKq7",
+  "shortUrl": "http://localhost:3002/aZbKq7",
   "originalUrl": "https://example.com/very/long/url"
 }
 ```
@@ -447,6 +612,19 @@ Content-Type: application/json
 
 ```http
 GET http://localhost:8080/info/{shortCode}
+```
+
+**Resposta:**
+
+```json
+{
+  "shortCode": "aZbKq7",
+  "shortUrl": "http://localhost:3002/aZbKq7",
+  "originalUrl": "https://example.com/very/long/url",
+  "clickCount": 10,
+  "createdAt": "2025-01-27T10:00:00.000Z",
+  "updatedAt": "2025-01-27T10:00:00.000Z"
+}
 ```
 
 ### 🔄 Redirecionamento (porta 3002)
@@ -459,26 +637,13 @@ GET http://localhost:3002/{shortCode}
 
 **Exemplo**:
 
-- URL encurtada: `http://localhost:8080/7ToK5d`
-- **Para redirecionamento**: `http://localhost:3002/7ToK5d`
-
-**Resposta:**
-
-```json
-{
-  "shortCode": "aZbKq7",
-  "shortUrl": "http://localhost:8080/aZbKq7",
-  "originalUrl": "https://example.com/very/long/url",
-  "clickCount": 10,
-  "createdAt": "2023-01-01T00:00:00.000Z",
-  "updatedAt": "2023-01-01T00:00:00.000Z"
-}
-```
+- URL encurtada: `http://localhost:8080/aZbKq7`
+- **Para redirecionamento**: `http://localhost:3002/aZbKq7`
 
 ## 🧪 Testes
 
 ```bash
-# Rodar todos os testes
+# Rodar todos os testes unitários
 npm test
 
 # Testes com cobertura
@@ -486,6 +651,9 @@ npm run test:cov
 
 # Testes E2E
 npm run test:e2e
+
+# Testes de integração
+npm run test:integration
 ```
 
 ## 🗄️ Database
@@ -493,6 +661,17 @@ npm run test:e2e
 ### Schema
 
 ```prisma
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
 model ShortUrl {
   id          String    @id @default(uuid())
   shortCode   String    @unique @db.VarChar(6)
@@ -503,6 +682,8 @@ model ShortUrl {
   deletedAt   DateTime?
 
   clicks UrlClick[]
+
+  @@map("short_urls")
 }
 
 model UrlClick {
@@ -514,6 +695,8 @@ model UrlClick {
   clickedAt  DateTime @default(now())
 
   shortUrl ShortUrl @relation(fields: [shortUrlId], references: [id])
+
+  @@map("url_clicks")
 }
 ```
 
@@ -532,7 +715,8 @@ npm run start:dev
 ### Produção
 
 ```bash
-# Build
+# Build de ambos os serviços
+npm run build:identity-service
 npm run build:url-shortener-service
 
 # Start produção
@@ -554,47 +738,56 @@ NODE_ENV=production npm run start:prod
 
 ### ✅ Diferenciais Sênior
 
-- ✅ **100% Test Coverage**
-- ✅ Configuração com variáveis de ambiente
-- ✅ Docker Compose completo
-- ✅ Fastify para performance
-- ✅ Prisma ORM
-- ✅ Health checks
-- ✅ Soft delete
-- ✅ Monorepo estruturado
-- ✅ Changelog documentado
+- ✅ **133 testes passando** (100% Test Coverage críticos)
+- ✅ **Microservices Architecture** completa (Identity + URL Services)
+- ✅ **JWT Authentication** com Passport e estratégias
+- ✅ **API Gateway KrakenD** com rate limiting avançado
+- ✅ **Documentation Hub** híbrido com Nginx
+- ✅ **Database Relations** User-ShortUrl com soft delete
+- ✅ **Hash Service** com bcryptjs para senhas
+- ✅ **Custom Decorators** (@CurrentUser)
+- ✅ **Guards e Strategies** JWT implementados
+- ✅ **Validation Pipes** com class-validator
+- ✅ **Docker Multi-Service** (7 containers)
+- ✅ **Health Checks** individuais por serviço
+- ✅ **Rate Limiting** diferenciado por endpoint
+- ✅ **Fastify** para alta performance
+- ✅ **Monorepo NestJS** bem estruturado
+- ✅ **Changelog** detalhado com versionamento
 
 ## 🗺️ Roadmap
 
-### 🎯 Release Atual - v0.1.0 ✅
+### 🎯 Release Atual - v0.2.0 ✅
 
-- ✅ **Core URL Shortener**: Funcionalidade básica completa
-- ✅ **API Gateway**: KrakenD configurado
-- ✅ **Testes**: 100% cobertura (29 testes passando)
-- ✅ **Docker**: Ambiente completo containerizado
+- ✅ **Identity Service**: Microserviço de autenticação completo
+- ✅ **JWT Authentication**: Login, registro, proteção de rotas
+- ✅ **User Management**: Gerenciamento completo de usuários
+- ✅ **API Gateway**: KrakenD com rate limiting e validação JWT
+- ✅ **Documentation Hub**: Sistema híbrido com Nginx
+- ✅ **Database Schema**: Relacionamento User-ShortUrl implementado
+- ✅ **Testing Suite**: 133 testes passando (74+34+25)
+- ✅ **Docker Architecture**: Ambiente completo com 7 serviços
 
 ### 🔄 Próximas Releases
-
-#### **v0.2.0 - Identity Service** 🚧
-
-- 🔐 **Autenticação JWT**
-- 👤 **Registro e login de usuários**
-- 🛡️ **Middleware de autenticação**
-- 🆔 **Identity Service separado**
 
 #### **v0.3.0 - URLs por Usuário** 📋
 
 - 🔗 **CRUD de URLs para usuários autenticados**
-- 📊 **Dashboard pessoal**
+  - `GET /my-urls` - Listar URLs do usuário
+  - `PUT /my-urls/:id` - Editar URL existente
+  - `DELETE /my-urls/:id` - Deletar URL do usuário
+- 📊 **Dashboard pessoal de URLs**
 - 🗂️ **Organização por usuário**
-- ⚙️ **Configurações de URL**
+- ⚙️ **Configurações avançadas de URL**
+- 🔒 **URLs privadas vs públicas**
 
-#### **v0.4.0 - Analytics** 📊
+#### **v0.4.0 - Analytics Avançado** 📊
 
 - 📈 **Métricas detalhadas de cliques**
 - 🌍 **Geolocalização de acessos**
 - 📱 **Detecção de dispositivos**
 - 📊 **Dashboards visuais**
+- 📅 **Relatórios temporais**
 
 #### **v0.5.0 - Observabilidade** 🔍
 
@@ -602,6 +795,7 @@ NODE_ENV=production npm run start:prod
 - 📊 **Métricas Prometheus**
 - 🚨 **Alertas e monitoramento**
 - 🐛 **Distributed tracing**
+- 🏥 **Health checks avançados**
 
 #### **v1.0.0 - Produção** 🚀
 
@@ -609,6 +803,7 @@ NODE_ENV=production npm run start:prod
 - 🏗️ **CI/CD completo**
 - 🛡️ **Segurança produção**
 - 📈 **Escalabilidade horizontal**
+- 🌐 **CDN e cache distribuído**
 
 ## 📝 Changelog
 

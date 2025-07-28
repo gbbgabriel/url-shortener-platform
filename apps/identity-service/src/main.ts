@@ -1,16 +1,16 @@
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter(),
+    new FastifyAdapter({ logger: true }),
   );
 
   // Global validation pipe
@@ -23,32 +23,23 @@ async function bootstrap() {
   );
 
   // CORS configuration
-  app.enableCors();
+  await app.register(import('@fastify/cors'), {
+    origin: true,
+  });
 
-  // Swagger Documentation
+  // Swagger configuration
   const config = new DocumentBuilder()
     .setTitle('Identity Service API')
-    .setDescription('Authentication and User Management Service')
+    .setDescription('Authentication and user management service')
     .setVersion('0.2.0')
     .addBearerAuth()
     .build();
+
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  // Health check endpoint
-  app.getHttpAdapter().get('/health', (req, reply) => {
-    reply.send({
-      status: 'OK',
-      timestamp: new Date().toISOString(),
-      service: 'identity-service',
-      version: '0.2.0',
-    });
-  });
-
-  console.log('🔐 Starting Identity Service...');
   await app.listen(3001, '0.0.0.0');
-  console.log('🎯 Identity Service is running on: http://localhost:3001');
-  console.log('📚 Swagger docs available at: http://localhost:3001/api/docs');
+  console.log('🚀 Identity Service running on port 3001');
 }
 
 void bootstrap();

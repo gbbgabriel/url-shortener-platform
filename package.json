@@ -1,7 +1,7 @@
 {
   "name": "url-shortener-platform",
-  "version": "0.1.0",
-  "description": "URL Shortener Platform - Release 0.1.0: Basic URL Shortening Service",
+  "version": "0.2.0",
+  "description": "URL Shortener Platform - Release 0.2.0: Identity Service + JWT Authentication",
   "author": "Gabriel Barbosa",
   "private": true,
   "license": "MIT",
@@ -101,6 +101,7 @@
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.7",
+    "@nestjs/platform-express": "^11.1.5",
     "@nestjs/schematics": "^11.0.5",
     "@nestjs/testing": "^11.1.5",
     "@types/bcryptjs": "^2.4.6",

@@ -3,30 +3,56 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: 'postgresql://test_user:test_password@localhost:5433/test_db',
+      url: 'postgresql://admin:password@localhost:5432/urlshortener',
     },
   },
 });
 
 beforeAll(async () => {
-  // Conectar ao banco de teste
+  // Conectar ao banco de desenvolvimento para testes
   await prisma.$connect();
-  console.log('🔗 Connected to test database for E2E');
+  console.log('🔗 Connected to development database for E2E');
 
   // Aguardar um pouco para garantir que a aplicação está rodando
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+  await new Promise((resolve) => setTimeout(resolve, 1000));
 });
 
 beforeEach(async () => {
-  // Limpar dados entre testes para isolamento completo
+  // Limpar dados de teste entre testes para isolamento
+  await prisma.user.deleteMany({
+    where: {
+      email: {
+        contains: 'e2e-test.com',
+      },
+    },
+  });
   await prisma.urlClick.deleteMany();
-  await prisma.shortUrl.deleteMany();
+  await prisma.shortUrl.deleteMany({
+    where: {
+      originalUrl: {
+        contains: 'e2e-test',
+      },
+    },
+  });
 });
 
 afterAll(async () => {
-  // Limpeza final
+  // Limpeza final só dos dados de teste
+  await prisma.user.deleteMany({
+    where: {
+      email: {
+        contains: 'e2e-test.com',
+      },
+    },
+  });
   await prisma.urlClick.deleteMany();
-  await prisma.shortUrl.deleteMany();
+  await prisma.shortUrl.deleteMany({
+    where: {
+      originalUrl: {
+        contains: 'e2e-test',
+      },
+    },
+  });
   await prisma.$disconnect();
   console.log('🔌 Disconnected from test database');
 });
