@@ -77,15 +77,20 @@
     "@fastify/cors": "^11.0.1",
     "@fastify/static": "^8.2.0",
     "@nestjs/common": "^11.1.5",
+    "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.5",
+    "@nestjs/jwt": "^11.0.0",
+    "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-fastify": "^11.1.5",
     "@nestjs/swagger": "^11.2.0",
     "@nestjs/terminus": "^11.0.0",
     "@prisma/client": "^6.12.0",
+    "bcryptjs": "^3.0.2",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "fastify": "^5.4.0",
     "helmet": "^8.1.0",
+    "passport-jwt": "^4.0.1",
     "prisma": "^6.12.0",
     "redis": "^4.7.1",
     "reflect-metadata": "^0.2.2",
@@ -98,8 +103,10 @@
     "@nestjs/cli": "^11.0.7",
     "@nestjs/schematics": "^11.0.5",
     "@nestjs/testing": "^11.1.5",
+    "@types/bcryptjs": "^2.4.6",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.1.0",
+    "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^6.0.3",
     "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",
@@ -118,4 +125,3 @@
     "typescript-eslint": "^8.38.0"
   }
 }
- 

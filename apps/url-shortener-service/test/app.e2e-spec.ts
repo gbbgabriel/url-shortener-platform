@@ -133,9 +133,9 @@ describe('UrlShortenerServiceController (e2e)', () => {
 
       mockPrismaService.shortUrl.findFirst.mockResolvedValue(mockShortUrl);
 
-    return request(app.getHttpServer())
+      return request(app.getHttpServer())
         .get(`/info/${shortCode}`)
-      .expect(200)
+        .expect(200)
         .expect((res: request.Response) => {
           const body = res.body as UrlInfoResponse;
           expect(body.shortCode).toBe(shortCode);
