@@ -77,6 +77,36 @@ services:
       - urlshortener-network
 
   # ===========================================
+  # IDENTITY SERVICE (Release 0.2.0)
+  # ===========================================
+  identity-service:
+    build:
+      context: .
+      dockerfile: apps/identity-service/Dockerfile
+    container_name: urlshortener-identity-service
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
+      # Observability
+      - ENABLE_SENTRY=${ENABLE_SENTRY}
+      - ENABLE_METRICS=${ENABLE_METRICS}
+      - LOG_LEVEL=${LOG_LEVEL}
+    ports:
+      - '${HOST_IDENTITY_PORT}:3001'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3001/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - urlshortener-network
+
+  # ===========================================
   # API GATEWAY
   # ===========================================
   krakend:
@@ -92,6 +122,7 @@ services:
       - FC_PARTIALS=/etc/krakend/partials
     depends_on:
       - url-shortener-service
+      - identity-service
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:${KRAKEND_PORT}/__health']
       interval: 30s
