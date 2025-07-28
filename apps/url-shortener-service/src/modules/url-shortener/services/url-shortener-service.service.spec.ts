@@ -437,7 +437,10 @@ describe('UrlShortenerServiceService', () => {
         deletedAt: new Date(),
       });
 
+      // Capture time before execution to avoid timing issues
+      const beforeTime = Date.now();
       await service.deleteUserUrl(userId, urlId);
+      const afterTime = Date.now();
 
       expect(mockPrismaService.shortUrl.findUnique).toHaveBeenCalledWith({
         where: { id: urlId },
@@ -452,7 +455,10 @@ describe('UrlShortenerServiceService', () => {
 
       expect(updateArgs.where).toEqual({ id: urlId });
       expect(updateArgs.data.deletedAt).toBeInstanceOf(Date);
-      expect(updateArgs.data.deletedAt.getTime()).toBeCloseTo(Date.now(), -1);
+      // Verify deletedAt is within the execution timeframe
+      const deletedAtTime = updateArgs.data.deletedAt.getTime();
+      expect(deletedAtTime).toBeGreaterThanOrEqual(beforeTime);
+      expect(deletedAtTime).toBeLessThanOrEqual(afterTime);
     });
 
     it('should throw NotFoundException when URL does not exist', async () => {
