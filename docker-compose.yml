@@ -1,5 +1,3 @@
-version: '3.8'
-
 # =======================================================
 # Docker Compose - Release 0.1.0: URL Shortener Platform
 # =======================================================
@@ -55,30 +53,30 @@ services:
       dockerfile: apps/url-shortener-service/Dockerfile
     container_name: urlshortener-service
     environment:
-      - NODE_ENV=${NODE_ENV}
+      - NODE_ENV=${NODE_ENV:-development}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-urlshortener}
       - REDIS_URL=redis://redis:6379
-      - PORT=${PORT}
-      - BASE_URL=${BASE_URL}
-      - REDIRECT_BASE_URL=${REDIRECT_BASE_URL}
+      - PORT=3002
+      - BASE_URL=${BASE_URL:-http://localhost:8080}
+      - REDIRECT_BASE_URL=${REDIRECT_BASE_URL:-http://localhost:3002}
       # JWT Configuration (needed for v0.3.0 authentication)
       - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key}
-      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-24h}
       # Observability
-      - ENABLE_SENTRY=${ENABLE_SENTRY}
-      - ENABLE_METRICS=${ENABLE_METRICS}
-      - LOG_LEVEL=${LOG_LEVEL}
+      - ENABLE_SENTRY=${ENABLE_SENTRY:-false}
+      - ENABLE_METRICS=${ENABLE_METRICS:-true}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
       - ENABLE_OBSERVABILITY=${ENABLE_OBSERVABILITY:-true}
       - PROMETHEUS_ENABLED=${PROMETHEUS_ENABLED:-true}
     ports:
-      - '${HOST_SERVICE_PORT:-3002}:${PORT}'
+      - '${HOST_SERVICE_PORT:-3002}:3002'
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:${PORT}/health']
+      test: ['CMD', 'curl', '-f', 'http://localhost:3002/health']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -94,14 +92,14 @@ services:
       dockerfile: apps/identity-service/Dockerfile
     container_name: urlshortener-identity-service
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV:-development}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-urlshortener}
       - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key}
-      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-24h}
       # Observability
-      - ENABLE_SENTRY=${ENABLE_SENTRY}
-      - ENABLE_METRICS=${ENABLE_METRICS}
-      - LOG_LEVEL=${LOG_LEVEL}
+      - ENABLE_SENTRY=${ENABLE_SENTRY:-false}
+      - ENABLE_METRICS=${ENABLE_METRICS:-true}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
       - ENABLE_OBSERVABILITY=${ENABLE_OBSERVABILITY:-true}
       - PROMETHEUS_ENABLED=${PROMETHEUS_ENABLED:-true}
     ports:
@@ -220,13 +218,13 @@ services:
 # ===========================================
 volumes:
   postgres_data:
-    name: ${POSTGRES_VOLUME_NAME}
+    name: ${POSTGRES_VOLUME_NAME:-postgres_data}
   redis_data:
-    name: ${REDIS_VOLUME_NAME}
+    name: ${REDIS_VOLUME_NAME:-redis_data}
   prometheus_data:
   grafana_data:
 
 networks:
   urlshortener-network:
-    name: ${NETWORK_NAME}
+    name: ${NETWORK_NAME:-urlshortener_network}
     driver: bridge

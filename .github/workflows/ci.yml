@@ -96,12 +96,51 @@ jobs:
       - name: Build Docker images
         run: |
           docker compose build
+        env:
+          NODE_ENV: development
+          PORT: 3002
+          BASE_URL: http://localhost:8080
+          REDIRECT_BASE_URL: http://localhost:3002
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci-test-jwt-secret-not-for-production' }}
+          JWT_EXPIRES_IN: 24h
+          ENABLE_SENTRY: false
+          ENABLE_METRICS: true
+          LOG_LEVEL: info
+          POSTGRES_VOLUME_NAME: postgres_data
+          REDIS_VOLUME_NAME: redis_data
+          NETWORK_NAME: urlshortener_network
 
       - name: Test Docker health
         run: |
           docker compose up -d
           sleep 30
           docker compose ps
+        env:
+          NODE_ENV: development
+          PORT: 3002
+          BASE_URL: http://localhost:8080
+          REDIRECT_BASE_URL: http://localhost:3002
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci-test-jwt-secret-not-for-production' }}
+          JWT_EXPIRES_IN: 24h
+          ENABLE_SENTRY: false
+          ENABLE_METRICS: true
+          LOG_LEVEL: info
+          POSTGRES_VOLUME_NAME: postgres_data
+          REDIS_VOLUME_NAME: redis_data
+          NETWORK_NAME: urlshortener_network
 
       - name: Cleanup
         run: docker compose down
+        env:
+          NODE_ENV: development
+          PORT: 3002
+          BASE_URL: http://localhost:8080
+          REDIRECT_BASE_URL: http://localhost:3002
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci-test-jwt-secret-not-for-production' }}
+          JWT_EXPIRES_IN: 24h
+          ENABLE_SENTRY: false
+          ENABLE_METRICS: true
+          LOG_LEVEL: info
+          POSTGRES_VOLUME_NAME: postgres_data
+          REDIS_VOLUME_NAME: redis_data
+          NETWORK_NAME: urlshortener_network
