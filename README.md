@@ -55,7 +55,88 @@ app_url_clicks_total{service="url-shortener"} 2
 http_requests_total{service="url-shortener",method="POST",route="/shorten"}
 ```
 
-## 🚀 Setup do Zero
+## �� Setup do Zero
+
+### 🔧 Pré-requisitos
+
+- **Node.js 22.14.0+** (recomendado)
+- **Docker & Docker Compose**
+- **Git**
+
+### 📥 Instalação
+
+```bash
+# Clone o repositório
+git clone https://github.com/gbbgabriel/url-shortener-platform.git
+cd url-shortener-platform
+
+# Instale dependências
+npm install
+
+# Configure banco de dados
+npx prisma generate
+npx prisma db push
+
+# Suba o ambiente completo
+docker-compose up -d
+```
+
+## 🤖 GitHub Actions - CI/CD Automatizado
+
+### 📊 **Status dos Workflows**
+
+- **CI/CD Pipeline**: Executa em push/PR para `main`, `develop`, `feature/*`
+- **Quality Check**: Verifica qualidade do código e segurança
+
+### 🔍 **Como Monitorar os Actions**
+
+#### **1. Acesse o GitHub Actions:**
+
+```
+https://github.com/gbbgabriel/url-shortener-platform/actions
+```
+
+#### **2. Workflows Configurados:**
+
+- **CI/CD Pipeline** (`ci.yml`):
+  - ✅ Matrix Testing (Node.js 20.x, 22.x)
+  - ✅ 121 testes (Unit + Integration + E2E)
+  - ✅ Build & Docker validation
+- **Quality Check** (`quality-check.yml`):
+  - ✅ ESLint + Prettier + TypeScript
+  - ✅ Security audit (npm audit)
+  - ✅ Package validation
+
+#### **3. Triggers Automáticos:**
+
+```bash
+# Triggerar workflows:
+git push origin feature/nova-feature  # ← Actions executam!
+git push origin main                  # ← Actions executam!
+
+# Ver status em tempo real:
+# GitHub → Actions → [Workflow] → Logs detalhados
+```
+
+#### **4. Status Badges (Live):**
+
+- ![CI/CD](https://github.com/gbbgabriel/url-shortener-platform/actions/workflows/ci.yml/badge.svg)
+- ![Quality](https://github.com/gbbgabriel/url-shortener-platform/actions/workflows/quality-check.yml/badge.svg)
+
+### 🛠️ **Executar Workflows Localmente:**
+
+```bash
+# Simular exatamente o que os Actions fazem:
+npm run lint                    # ESLint check
+npx tsc --noEmit               # TypeScript check
+npm test                       # Unit tests (78)
+npm run test:integration       # Integration (17)
+npm run test:e2e              # E2E tests (26)
+npm run build:identity-service # Build services
+npm audit --audit-level moderate # Security
+```
+
+## 🎯 Acesso Rápido
 
 ### 📋 Pré-requisitos
 
@@ -943,3 +1024,49 @@ Veja [CHANGELOG.md](./CHANGELOG.md) para histórico de mudanças.
 ## 📄 Licença
 
 Este projeto está sob a licença MIT. Veja [LICENSE](LICENSE) para mais detalhes.
+
+## 🤖 GitHub Actions - CI/CD na Prática
+
+### 🚀 **Workflows Automatizados**
+
+Este projeto usa GitHub Actions para CI/CD automatizado. Toda vez que você faz push, os workflows são executados:
+
+```bash
+# ✨ Como triggerar os Actions:
+git push origin feature/sua-branch    # ← Executa workflows automaticamente!
+git push origin main                  # ← Executa workflows automaticamente!
+```
+
+### 📊 **Monitoramento em Tempo Real:**
+
+#### **1. Acesse:** `https://github.com/gbbgabriel/url-shortener-platform/actions`
+
+#### **2. Workflows Ativos:**
+
+- **🔄 CI/CD Pipeline** - Testes completos + Build
+- **🔍 Quality Check** - Lint + Security + TypeScript
+
+#### **3. Status Live:**
+
+- ![CI/CD Status](https://github.com/gbbgabriel/url-shortener-platform/actions/workflows/ci.yml/badge.svg)
+- ![Quality Status](https://github.com/gbbgabriel/url-shortener-platform/actions/workflows/quality-check.yml/badge.svg)
+
+### 🧪 **O que os Actions Executam:**
+
+```bash
+# Exatamente isso que testamos localmente:
+✅ npm run lint                    # ESLint (0 erros)
+✅ npx tsc --noEmit               # TypeScript check
+✅ npm test                       # 78 testes unitários
+✅ npm run test:integration       # 17 testes integração
+✅ npm run test:e2e              # 26 testes E2E
+✅ npm run build                  # Build services
+✅ npm audit                      # Security audit
+✅ docker-compose build           # Docker validation
+```
+
+### 💡 **Dica Pro:**
+
+Quando você fizer push agora, vá no GitHub Actions e veja os workflows rodando em tempo real! 🔥
+
+---
