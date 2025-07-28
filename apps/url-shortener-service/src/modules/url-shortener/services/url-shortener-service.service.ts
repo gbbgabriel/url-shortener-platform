@@ -3,8 +3,10 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '@app/prisma';
+import { MetricsService } from '@app/observability';
 import {
   isValidUrl,
   generateRandomCode,
@@ -12,45 +14,89 @@ import {
 
 @Injectable()
 export class UrlShortenerServiceService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(UrlShortenerServiceService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly metricsService: MetricsService,
+  ) {}
 
   async shortenUrl(originalUrl: string, userId?: string) {
+    const startTime = Date.now();
+
     if (!isValidUrl(originalUrl)) {
       throw new BadRequestException('Invalid URL');
     }
 
-    const shortCode = await this.generateUniqueCode();
+    try {
+      const shortCode = await this.generateUniqueCode();
 
-    const shortUrl = await this.prisma.shortUrl.create({
-      data: {
-        shortCode,
-        originalUrl,
-        userId: userId || null, // Associate with user if authenticated, null if anonymous
-      },
-    });
+      const shortUrl = await this.prisma.shortUrl.create({
+        data: {
+          shortCode,
+          originalUrl,
+          userId: userId || null,
+        },
+      });
 
-    return {
-      shortCode: shortUrl.shortCode,
-      shortUrl: `${process.env.REDIRECT_BASE_URL || 'http://localhost:3002'}/${shortUrl.shortCode}`,
-      originalUrl: shortUrl.originalUrl,
-    };
+      // Registra métrica de URL criada
+      this.metricsService.incrementUrlCreated(
+        userId ? 'authenticated' : 'anonymous',
+        'url-shortener',
+      );
+
+      this.logger.log('🚀 URL created with clean metrics!', {
+        shortCode: shortUrl.shortCode,
+        userId: userId || 'anonymous',
+        operation: 'url_created',
+        duration: Date.now() - startTime,
+      });
+
+      return {
+        shortCode: shortUrl.shortCode,
+        shortUrl: `${process.env.REDIRECT_BASE_URL || 'http://localhost:3002'}/${shortUrl.shortCode}`,
+        originalUrl: shortUrl.originalUrl,
+      };
+    } catch (error) {
+      this.logger.error('Failed to create URL', error);
+      throw error;
+    }
   }
 
   async redirect(shortCode: string) {
-    const shortUrl = await this.prisma.shortUrl.findUnique({
-      where: { shortCode },
-    });
+    try {
+      const shortUrl = await this.prisma.shortUrl.findUnique({
+        where: { shortCode, deletedAt: null },
+      });
 
-    if (!shortUrl) {
-      throw new NotFoundException('URL not found');
+      if (!shortUrl) {
+        throw new NotFoundException('URL not found');
+      }
+
+      // Registra métrica de clique
+      this.metricsService.incrementUrlClick('url-shortener');
+
+      // Increment click count asynchronously (fire-and-forget)
+      this.prisma.shortUrl
+        .update({
+          where: { id: shortUrl.id },
+          data: { clickCount: { increment: 1 } },
+        })
+        .catch((error) => {
+          this.logger.error('Failed to increment click count', error);
+        });
+
+      this.logger.log('🔄 URL redirect with clean click metric!', {
+        shortCode,
+        originalUrl: shortUrl.originalUrl,
+        operation: 'url_redirect',
+      });
+
+      return shortUrl.originalUrl;
+    } catch (error) {
+      this.logger.error('Redirect failed', error);
+      throw error;
     }
-
-    // Record click asynchronously (don't block redirect)
-    this.recordClick(shortCode).catch((error) => {
-      console.error('Error recording click:', error);
-    });
-
-    return shortUrl.originalUrl;
   }
 
   async getUrlInfo(shortCode: string) {

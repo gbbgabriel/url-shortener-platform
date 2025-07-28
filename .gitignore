@@ -339,6 +339,9 @@ prometheus-data/
 apps/*/dist/
 libs/*/dist/
 
+# Memory Bank (documentação interna do desenvolvimento)
+memory-bank/
+
 # Generated documentation
 docs/generated/
 

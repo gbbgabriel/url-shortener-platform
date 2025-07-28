@@ -1,6 +1,59 @@
 # 🔗 URL Shortener Platform
 
-**Release 0.3.0** - Plataforma completa de encurtamento de URLs com gerenciamento personalizado de URLs por usuário, Identity Service, autenticação JWT e arquitetura de microserviços.
+![CI/CD Pipeline](https://github.com/gbbgabriel/url-shortener-platform/actions/workflows/ci.yml/badge.svg)
+![Quality Check](https://github.com/gbbgabriel/url-shortener-platform/actions/workflows/quality-check.yml/badge.svg)
+![Node.js Version](https://img.shields.io/badge/node.js-22.14.0-green)
+![Tests](https://img.shields.io/badge/tests-121%20passing-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-100%25%20critical-brightgreen)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
+
+**Release 1.0.0** - Plataforma completa de encurtamento de URLs com **observabilidade estruturada**, **CI/CD automatizado**, **monitoramento em tempo real**, gerenciamento personalizado de URLs, autenticação JWT e arquitetura de microserviços.
+
+## 🎉 Release 1.0.0 - Production Ready
+
+### ✨ Observabilidade Completa
+
+- **📊 Grafana Dashboard**: Monitoramento visual em tempo real (`http://localhost:3000`)
+- **📈 Prometheus Metrics**: Coleta automática de métricas de negócio e sistema
+- **🔍 Structured Logging**: Logs JSON com Winston em todos os serviços
+- **⚡ Business Intelligence**: Rastreamento de URLs criadas, cliques e performance
+
+### 🚀 CI/CD Automatizado
+
+- **✅ GitHub Actions**: Pipeline completo com 3 tipos de teste
+- **🧪 Quality Gates**: 121 testes (78 unitários + 17 integração + 26 E2E)
+- **🔒 Security & Quality**: ESLint, Prettier, npm audit, TypeScript strict
+- **🐳 Docker Validation**: Multi-stage builds e health checks
+
+### 📊 Dashboard & Métricas
+
+#### Grafana Dashboard: `http://localhost:3000` (admin/admin123)
+
+- **URLs Criadas em Tempo Real**
+- **Cliques por Período**
+- **Performance dos Serviços**
+- **Health Status**
+- **Error Rates**
+
+#### Métricas Prometheus: `http://localhost:9090`
+
+**Identity Service** (`http://localhost:3001/metrics`)
+
+```prometheus
+# Métricas de autenticação e usuários
+identity_service_info{version="1.0.0",service="identity"} 1
+http_requests_total{service="identity",method="POST",route="/auth/login"}
+auth_login_attempts_total{service="identity",status="success"}
+```
+
+**URL Shortener Service** (`http://localhost:3002/metrics`)
+
+```prometheus
+# Métricas de negócio em tempo real
+app_urls_created_total{service="url-shortener",user_type="authenticated"} 5
+app_url_clicks_total{service="url-shortener"} 2
+http_requests_total{service="url-shortener",method="POST",route="/shorten"}
+```
 
 ## 🚀 Setup do Zero
 
