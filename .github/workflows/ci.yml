@@ -42,6 +42,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Wait for PostgreSQL
+        run: |
+          echo "Waiting for PostgreSQL to be ready..."
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5433 -U test_user; then
+              echo "PostgreSQL is ready!"
+              break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+          done
+
       - name: Lint check
         run: npm run lint
 
@@ -51,27 +63,27 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Build services
+        run: |
+          npm run build:identity-service
+          npm run build:url-shortener-service
+
       - name: Setup test database
         run: |
           DATABASE_URL="postgresql://test_user:test_password@localhost:5433/test_db" npx prisma db push
-
-      - name: E2E tests
-        run: npm run test:e2e
-        env:
-          DATABASE_URL: postgresql://test_user:test_password@localhost:5433/test_db
 
       - name: Integration tests
         run: npm run test:integration
         env:
           DATABASE_URL: postgresql://test_user:test_password@localhost:5433/test_db
 
+      - name: E2E tests
+        run: npm run test:e2e
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5433/test_db
+
       - name: Test coverage
         run: npm run test:cov
-
-      - name: Build services
-        run: |
-          npm run build:identity-service
-          npm run build:url-shortener-service
 
   build-docker:
     runs-on: ubuntu-latest
